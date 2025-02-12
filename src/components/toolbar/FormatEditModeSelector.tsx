@@ -1,6 +1,6 @@
 import React from "react";
-import { FormatEditMode } from "../types/editor";
-
+import { FormatEditMode } from "../../types/editor";
+import "./FormatEditModeSelector.scss";
 interface FormatEditModeSelectorProps {
   mode: FormatEditMode;
   onChange: (mode: FormatEditMode) => void;

@@ -1,7 +1,12 @@
 import React, { useCallback, useState, useRef, useEffect } from "react";
-import { Format } from "../types/format";
-import { EditorObject } from "../types/editor";
+import { Format } from "../../types/format";
+import { EditorObject } from "../../types/editor";
 import { Layer, Stage, Rect } from "react-konva";
+import { ImageObjectComponent } from "../shapes/ImageObject";
+import { TextObjectComponent } from "../shapes/TextObject";
+import { ShapeObjectComponent } from "../shapes/ShapeObject";
+import "./ExportDialog.scss";
+import type Konva from "konva";
 
 interface ExportDialogProps {
   isOpen: boolean;
@@ -56,14 +61,16 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
 
     // Hide all transformers (selection outlines)
     const transformers = stage.find("Transformer");
-    transformers.forEach((transformer) => transformer.hide());
+    transformers.forEach((transformer: Konva.Transformer) =>
+      transformer.hide()
+    );
 
     // Create a temporary layer for clipping
     const layer = stage.findOne("Layer");
     const oldClip = layer.clipFunc();
 
     // Set clipping to format area
-    layer.clipFunc((ctx) => {
+    layer.clipFunc((ctx: Konva.Context) => {
       ctx.beginPath();
       ctx.rect(formatX, formatY, currentFormat.width, currentFormat.height);
       ctx.closePath();
@@ -82,7 +89,9 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
 
     // Restore original state
     layer.clipFunc(oldClip);
-    transformers.forEach((transformer) => transformer.show());
+    transformers.forEach((transformer: Konva.Transformer) =>
+      transformer.show()
+    );
 
     // Download
     const link = document.createElement("a");
@@ -118,12 +127,49 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({
                   stage?.findOne("Layer").findOne("Rect").attrs.fill ||
                   "#ffffff"
                 }
+                opacity={
+                  stage?.findOne("Layer").findOne("Rect").attrs.opacity || 1
+                }
               />
-              {objects.map((obj) => {
-                // Render preview objects here
-                // You can reuse your object components
-                return null; // Placeholder
-              })}
+              {objects
+                .sort((a, b) => a.zIndex - b.zIndex)
+                .map((obj) => {
+                  if (!obj.visible) return null;
+                  if (obj.type === "image") {
+                    return (
+                      <ImageObjectComponent
+                        key={obj.id}
+                        object={obj as ImageObject}
+                        isSelected={false}
+                        onSelect={() => {}}
+                        onChange={() => {}}
+                      />
+                    );
+                  }
+                  if (obj.type === "text") {
+                    return (
+                      <TextObjectComponent
+                        key={obj.id}
+                        object={obj as TextObject}
+                        isSelected={false}
+                        onSelect={() => {}}
+                        onChange={() => {}}
+                      />
+                    );
+                  }
+                  if (obj.type === "shape") {
+                    return (
+                      <ShapeObjectComponent
+                        key={obj.id}
+                        object={obj as ShapeObject}
+                        isSelected={false}
+                        onSelect={() => {}}
+                        onChange={() => {}}
+                      />
+                    );
+                  }
+                  return null;
+                })}
             </Layer>
           </Stage>
         </div>

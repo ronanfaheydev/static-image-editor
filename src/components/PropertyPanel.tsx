@@ -1,12 +1,12 @@
 import React from "react";
 import {
   EditorObject,
-  ImageObject,
   TextObject,
   ShapeObject,
   BlendMode,
   EditorState,
 } from "../types/editor";
+import "./PropertyPanel.scss";
 
 interface PropertyPanelProps {
   selectedObject: EditorObject | null;

@@ -1,8 +1,8 @@
 import React from "react";
 import { useEffect, useState } from "react";
-import { Project } from "../types/project";
-import { loadProjects } from "../utils/projectManager";
-
+import { Project } from "../../types/project";
+import { loadProjects } from "../../utils/projectManager";
+import "./LoadDialog.scss";
 interface LoadDialogProps {
   isOpen: boolean;
   onClose: () => void;

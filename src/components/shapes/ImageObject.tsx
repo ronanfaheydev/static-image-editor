@@ -1,8 +1,9 @@
 import React, { useEffect } from "react";
 import { Image, Transformer } from "react-konva";
 import type Konva from "konva";
-import { ImageObject } from "../types/editor";
+import { ImageObject } from "../../types/editor";
 import useImage from "use-image";
+import "./ImageObject.scss";
 
 interface ImageObjectProps {
   object: ImageObject;
@@ -40,9 +41,8 @@ export const ImageObjectComponent: React.FC<ImageObjectProps> = ({
   };
 
   // Handle transform end
-  const handleTransformEnd = (e: Konva.KonvaEventObject<Event>) => {
+  const handleTransformEnd = () => {
     if (!imageRef.current) return;
-
     const node = imageRef.current;
     const scaleX = node.scaleX();
     const scaleY = node.scaleY();
@@ -80,7 +80,9 @@ export const ImageObjectComponent: React.FC<ImageObjectProps> = ({
         onTap={onSelect}
         onDragEnd={handleDragEnd}
         onTransformEnd={handleTransformEnd}
-        globalCompositeOperation={object.blendMode}
+        globalCompositeOperation={
+          object.blendMode as Konva.globalCompositeOperationType
+        }
       />
       {isSelected && (
         <Transformer

@@ -1,0 +1,55 @@
+@import "../../styles/variables";
+
+.toolbar {
+  grid-row: 1;
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background-color: $white;
+  border-bottom: 1px solid $border-color;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+
+  button {
+    padding: 0.5rem 1rem;
+    border: 1px solid $border-color;
+    background-color: $white;
+    border-radius: $border-radius;
+    cursor: pointer;
+    font: {
+      size: 0.9rem;
+    }
+    color: $text-color;
+    min-width: 80px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    &:hover {
+      background-color: $background-color;
+    }
+
+    &:active {
+      background-color: darken($background-color, 5%);
+    }
+  }
+}
+
+%control-group {
+  display: flex;
+  gap: 0.5rem;
+  padding-left: 0.5rem;
+  margin-left: 0.5rem;
+  border-left: 1px solid $border-color;
+}
+
+.zoom-controls,
+.shape-controls,
+.history-controls,
+.file-controls,
+.template-controls {
+  @extend %control-group;
+}

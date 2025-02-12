@@ -1,13 +1,23 @@
 import { Shape, Transformer } from "react-konva";
 import type Konva from "konva";
-import { ShapeObject } from "../types/editor";
+import { ShapeObject } from "../../types/editor";
 import { useEffect, useRef } from "react";
+import { CurveShape } from "./CurveShape";
+import "./ShapeObject.scss";
 
 interface ShapeObjectProps {
   object: ShapeObject;
   isSelected: boolean;
   onSelect: () => void;
   onChange: (newProps: Partial<ShapeObject>) => void;
+}
+
+// Define BoundBox interface
+interface BoundBox {
+  width: number;
+  height: number;
+  x: number;
+  y: number;
 }
 
 export const ShapeObjectComponent = ({
@@ -27,6 +37,10 @@ export const ShapeObjectComponent = ({
   }, [isSelected]);
 
   const getShapePath = () => {
+    if (object.shapeType === "curve") {
+      return null;
+    }
+
     const width = object.size.width;
     const height = object.size.height;
 
@@ -98,56 +112,65 @@ export const ShapeObjectComponent = ({
 
   return (
     <>
-      <Shape
-        {...getShapePath()}
-        ref={shapeRef}
-        x={object.position.x}
-        y={object.position.y}
-        width={object.size.width}
-        height={object.size.height}
-        fill={object.fill}
-        stroke={object.stroke}
-        strokeWidth={object.strokeWidth}
-        rotation={object.rotation}
-        opacity={object.opacity}
-        draggable
-        onClick={onSelect}
-        onTap={onSelect}
-        onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
-          onChange({
-            position: {
-              x: e.target.x(),
-              y: e.target.y(),
-            },
-          });
-        }}
-        onTransformEnd={() => {
-          const node = shapeRef.current;
-          if (!node) return;
+      {object.shapeType === "curve" ? (
+        <CurveShape
+          object={object}
+          isSelected={isSelected}
+          onSelect={onSelect}
+          onChange={onChange}
+        />
+      ) : (
+        <Shape
+          {...getShapePath()}
+          ref={shapeRef}
+          x={object.position.x}
+          y={object.position.y}
+          width={object.size.width}
+          height={object.size.height}
+          fill={object.fill}
+          stroke={object.stroke}
+          strokeWidth={object.strokeWidth}
+          rotation={object.rotation}
+          opacity={object.opacity}
+          draggable
+          onClick={onSelect}
+          onTap={onSelect}
+          onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
+            onChange({
+              position: {
+                x: e.target.x(),
+                y: e.target.y(),
+              },
+            });
+          }}
+          onTransformEnd={() => {
+            const node = shapeRef.current;
+            if (!node) return;
 
-          const scaleX = node.scaleX();
-          const scaleY = node.scaleY();
+            const scaleX = node.scaleX();
+            const scaleY = node.scaleY();
 
-          node.scaleX(1);
-          node.scaleY(1);
+            node.scaleX(1);
+            node.scaleY(1);
 
-          onChange({
-            position: {
-              x: node.x(),
-              y: node.y(),
-            },
-            size: {
-              width: node.width() * scaleX,
-              height: node.height() * scaleY,
-            },
-            rotation: node.rotation(),
-          });
-        }}
-      />
+            onChange({
+              position: {
+                x: node.x(),
+                y: node.y(),
+              },
+              size: {
+                width: node.width() * scaleX,
+                height: node.height() * scaleY,
+              },
+              rotation: node.rotation(),
+            });
+          }}
+        />
+      )}
       {isSelected && (
         <Transformer
           ref={transformerRef}
-          boundBoxFunc={(oldBox: Konva.Box, newBox: Konva.Box) => {
+          boundBoxFunc={(oldBox: BoundBox, newBox: BoundBox) => {
             const minWidth = 5;
             const minHeight = 5;
             if (newBox.width < minWidth || newBox.height < minHeight) {

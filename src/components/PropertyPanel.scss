@@ -1,0 +1,50 @@
+@import "../styles/variables";
+
+.property-panel {
+  grid-row: 2;
+  grid-column: 3;
+  border-left: 1px solid $border-color;
+  overflow-y: auto;
+  background: white;
+  padding: 1rem;
+
+  h3 {
+    margin: 0 0 1rem 0;
+    font-size: 1rem;
+    color: $text-color;
+    font-weight: 600;
+  }
+
+  .property-group {
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid $border-color;
+
+    &:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+  }
+
+  .property-item {
+    margin-bottom: 0.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+
+    input,
+    select {
+      width: 100%;
+      padding: 0.5rem;
+      border: 1px solid $border-color;
+      border-radius: $border-radius;
+      font-size: 0.9rem;
+
+      &:focus {
+        outline: none;
+        border-color: $primary-color;
+      }
+    }
+  }
+}

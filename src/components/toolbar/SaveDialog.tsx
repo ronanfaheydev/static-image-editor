@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { Stage } from "konva/lib/Stage";
-import { Format } from "../types/format";
-import { EditorObject } from "../types/editor";
-import { saveProject } from "../utils/projectManager";
-import { Project } from "../types/project";
+import { Format } from "../../types/format";
+import { EditorObject } from "../../types/editor";
+import { saveProject } from "../../utils/projectManager";
+import { Project } from "../../types/project";
+import "./SaveDialog.scss";
 
 interface SaveDialogProps {
   isOpen: boolean;
@@ -32,6 +33,8 @@ export const SaveDialog: React.FC<SaveDialogProps> = ({
       currentFormat,
       customFormats,
       lastModified: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
 
     await saveProject(project);

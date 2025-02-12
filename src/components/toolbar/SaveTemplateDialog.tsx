@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Stage } from "konva/lib/Stage";
-import { Format } from "../types/format";
-import { EditorObject } from "../types/editor";
-import { DEFAULT_CATEGORIES } from "../types/template";
-import { saveTemplate } from "../utils/templateManager";
+import { Format } from "../../types/format";
+import { EditorObject } from "../../types/editor";
+import { DEFAULT_CATEGORIES } from "../../types/template";
+import { saveTemplate } from "../../utils/templateManager";
 
 interface SaveTemplateDialogProps {
   isOpen: boolean;

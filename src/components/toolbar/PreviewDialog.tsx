@@ -1,10 +1,11 @@
 import React from "react";
 import { Stage, Layer } from "react-konva";
-import { Format } from "../types/format";
-import { EditorObject } from "../types/editor";
-import { ImageObjectComponent } from "./ImageObject";
-import { TextObjectComponent } from "./TextObject";
-import { ShapeObjectComponent } from "./ShapeObject";
+import { Format } from "../../types/format";
+import { EditorObject } from "../../types/editor";
+import { ImageObjectComponent } from "../shapes/ImageObject";
+import { TextObjectComponent } from "../shapes/TextObject";
+import { ShapeObjectComponent } from "../shapes/ShapeObject";
+import "./PreviewDialog.scss";
 
 interface PreviewDialogProps {
   isOpen: boolean;

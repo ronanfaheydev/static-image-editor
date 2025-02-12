@@ -7,7 +7,7 @@ import {
   FormatEditMode,
   BlendMode,
 } from "./types/editor";
-import "./App.css";
+import "./App.scss";
 import { useHistory } from "./hooks/useHistory";
 import { useHotkeys } from "react-hotkeys-hook";
 import { LayerPanel } from "./components/LayerPanel";
@@ -16,9 +16,9 @@ import { Format, DEFAULT_FORMATS } from "./types/format";
 import { Template } from "./types/template";
 import { KonvaEventObject } from "konva/lib/Node";
 import { Project } from "./types/project";
-import { Toolbar } from "./components/Toolbar";
+import { Toolbar } from "./components/toolbar/Toolbar";
 import { Canvas } from "./components/Canvas";
-import { DialogManager } from "./components/DialogManager";
+import { DialogManager } from "./components/toolbar/DialogManager";
 
 // Add these constants back
 const CANVAS_WIDTH = 1600;
@@ -543,6 +543,14 @@ function App() {
         handleFormatEditModeChange={handleFormatEditModeChange}
         openDialog={openDialog}
       />
+      <LayerPanel
+        objects={objects}
+        selectedIds={editorState.selectedIds}
+        onSelect={handleSelect}
+        onReorder={handleReorderLayers}
+        onVisibilityChange={handleVisibilityChange}
+        onNameChange={handleNameChange}
+      />
       <div className="main-content">
         <Canvas
           editorState={editorState}
@@ -557,26 +565,16 @@ function App() {
           handleDragEnd={handleDragEnd}
           handleDragMove={handleDragMove}
         />
-        <div className="panels-container">
-          <PropertyPanel
-            selectedObject={getSelectedObject()}
-            onChange={handleObjectChange}
-            editorState={editorState}
-            setEditorState={useCallback((newState: EditorState) => {
-              console.log("Setting editor state to:", newState);
-              setEditorState(newState);
-            }, [])}
-          />
-          <LayerPanel
-            objects={objects}
-            selectedIds={editorState.selectedIds}
-            onSelect={handleSelect}
-            onReorder={handleReorderLayers}
-            onVisibilityChange={handleVisibilityChange}
-            onNameChange={handleNameChange}
-          />
-        </div>
       </div>
+      <PropertyPanel
+        selectedObject={getSelectedObject()}
+        onChange={handleObjectChange}
+        editorState={editorState}
+        setEditorState={useCallback((newState: EditorState) => {
+          console.log("Setting editor state to:", newState);
+          setEditorState(newState);
+        }, [])}
+      />
       <DialogManager dialogs={dialogs} closeDialog={closeDialogByKey} />
     </div>
   );

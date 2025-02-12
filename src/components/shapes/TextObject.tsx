@@ -1,7 +1,15 @@
 import { Text, Transformer } from "react-konva";
 import type Konva from "konva";
-import { TextObject } from "../types/editor";
+import { TextObject } from "../../types/editor";
 import { useEffect, useRef } from "react";
+import "./TextObject.scss";
+
+interface BoundBox {
+  width: number;
+  height: number;
+  x: number;
+  y: number;
+}
 
 interface TextObjectProps {
   object: TextObject;
@@ -117,7 +125,7 @@ export const TextObjectComponent = ({
       {isSelected && (
         <Transformer
           ref={transformerRef}
-          boundBoxFunc={(oldBox: Konva.Box, newBox: Konva.Box) => {
+          boundBoxFunc={(oldBox: BoundBox, newBox: BoundBox) => {
             const minWidth = 5;
             const minHeight = 5;
             if (newBox.width < minWidth || newBox.height < minHeight) {

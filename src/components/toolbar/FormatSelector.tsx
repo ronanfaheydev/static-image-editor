@@ -1,5 +1,6 @@
 import React, { useState } from "react";
-import { Format, DEFAULT_FORMATS } from "../types/format";
+import { Format, DEFAULT_FORMATS } from "../../types/format";
+import "./FormatSelector.scss";
 
 interface FormatSelectorProps {
   currentFormat: Format;

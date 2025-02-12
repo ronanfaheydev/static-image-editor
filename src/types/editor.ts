@@ -35,6 +35,8 @@ export interface EditorObject {
   name: string;
   zIndex: number;
   blendMode: BlendMode;
+  fontSize?: number;
+  fontFamily?: string;
 }
 
 export interface ImageObject extends EditorObject {
@@ -50,12 +52,21 @@ export interface TextObject extends EditorObject {
   fill: string;
 }
 
+export type ShapeType = "rectangle" | "circle" | "star" | "line" | "curve";
+
+export interface CurveConfig {
+  points: number[];
+  tension: number;
+  closed: boolean;
+}
+
 export interface ShapeObject extends EditorObject {
   type: "shape";
-  shapeType: "rectangle" | "circle" | "line" | "star";
+  shapeType: ShapeType;
   fill: string;
   stroke: string;
   strokeWidth: number;
+  curveConfig?: CurveConfig;
 }
 
 export type FormatEditMode = "single" | "all";

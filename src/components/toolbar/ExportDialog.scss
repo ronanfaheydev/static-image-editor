@@ -1,0 +1,29 @@
+@import "../../styles/variables";
+
+.export-options {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.export-preview {
+  border: 1px solid $border-color;
+  border-radius: $border-radius;
+  overflow: hidden;
+  background: $background-color;
+  margin: 1rem 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.export-info {
+  background: $background-color;
+  padding: 0.5rem;
+  border-radius: $border-radius;
+  font: {
+    size: 0.9rem;
+  }
+  color: darken($background-color, 40%);
+}

@@ -1,6 +1,6 @@
 import React from "react";
-import { EditorState, ShapeObject } from "../types/editor";
-import { Format } from "../types/format";
+import { EditorState, ShapeObject } from "../../types/editor";
+import { Format } from "../../types/format";
 import { FormatSelector } from "./FormatSelector";
 import { FormatEditModeSelector } from "./FormatEditModeSelector";
 
@@ -106,6 +106,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       <button onClick={() => handleAddShape("circle")}>Circle</button>
       <button onClick={() => handleAddShape("star")}>Star</button>
       <button onClick={() => handleAddShape("line")}>Line</button>
+      <button onClick={() => handleAddShape("curve")}>Curve</button>
     </div>
     <div className="history-controls">
       <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">

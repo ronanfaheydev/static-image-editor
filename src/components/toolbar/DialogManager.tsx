@@ -1,4 +1,5 @@
 import React from "react";
+
 import { PreviewDialog } from "./PreviewDialog";
 import { ExportDialog } from "./ExportDialog";
 import { SaveDialog } from "./SaveDialog";
@@ -7,11 +8,29 @@ import { TemplateBrowser } from "./TemplateBrowser";
 import { SaveTemplateDialog } from "./SaveTemplateDialog";
 import { ExportJSONDialog } from "./ExportJSONDialog";
 
+import { Format } from "../../types/format";
+import { EditorObject } from "../../types/editor";
+import type Konva from "konva";
+import { Project } from "../../types/project";
+import { Template } from "../../types/template";
+
+import "./DialogManager.scss";
+
 interface DialogManagerProps {
   dialogs: {
     [key: string]: {
       isOpen: boolean;
-      props: any;
+      props: {
+        objects: EditorObject[];
+        formats: Format[];
+        customFormats: Format[];
+        stage: Konva.Stage;
+        currentFormat: Format;
+        onLoad: (project: Project) => void;
+        project: Project;
+        onSelect: (template: Template) => void;
+        onSaved: () => void;
+      };
     };
   };
   closeDialog: (dialogName: string) => void;

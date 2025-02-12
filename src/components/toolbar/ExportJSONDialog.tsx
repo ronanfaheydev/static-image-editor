@@ -1,5 +1,5 @@
 import React from "react";
-import { Project } from "../types/project";
+import { Project } from "../../types/project";
 
 interface ExportJSONDialogProps {
   isOpen: boolean;

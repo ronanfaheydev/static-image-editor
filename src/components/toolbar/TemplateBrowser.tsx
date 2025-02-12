@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { Template, DEFAULT_CATEGORIES } from "../types/template";
+import { Template, DEFAULT_CATEGORIES } from "../../types/template";
 import {
   loadAllTemplates,
   deleteTemplate,
   searchTemplates,
   getTemplatesByCategory,
-} from "../utils/templateManager";
+} from "../../utils/templateManager";
+import "./TemplateBrowser.scss";
 
 interface TemplateBrowserProps {
   isOpen: boolean;

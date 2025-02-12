@@ -1,0 +1,37 @@
+// Variables
+$item-bg: white;
+$border-color: #e0e0e0;
+$selected-bg: #f5f5f5;
+
+.layer-panel {
+  grid-row: 2;
+  grid-column: 1;
+  border-right: 1px solid #ccc;
+  overflow-y: auto;
+  background: $item-bg;
+  padding: 1rem;
+
+  .layer-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: $item-bg;
+    border: 1px solid $border-color;
+    margin-bottom: 0.5rem;
+    border-radius: 4px;
+    transition: all 0.2s;
+
+    &.selected {
+      background: $selected-bg;
+      border-color: #ccc;
+    }
+
+    .layer-content {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex: 1;
+    }
+  }
+}

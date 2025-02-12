@@ -7,12 +7,13 @@ import {
   TextObject,
   ShapeObject,
 } from "../types/editor";
-import { ImageObjectComponent } from "./ImageObject";
-import { TextObjectComponent } from "./TextObject";
-import { ShapeObjectComponent } from "./ShapeObject";
+import { ImageObjectComponent } from "./shapes/ImageObject";
+import { TextObjectComponent } from "./shapes/TextObject";
+import { ShapeObjectComponent } from "./shapes/ShapeObject";
 import { KonvaEventObject } from "konva/lib/Node";
 import { Format } from "../types/format";
 import { useContainerSize } from "../hooks/useContainerSize";
+import "./Canvas.scss";
 
 interface CanvasProps {
   editorState: EditorState;

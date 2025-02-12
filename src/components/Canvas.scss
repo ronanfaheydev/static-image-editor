@@ -1,0 +1,30 @@
+@import "../styles/variables";
+
+.canvas-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  overflow: hidden;
+  background: {
+    color: #e0e0e0;
+    image: radial-gradient(circle, #cccccc 1px, transparent 1px);
+    size: 20px 20px;
+  }
+
+  &.zooming {
+    background-size: calc(20px * var(--zoom)) calc(20px * var(--zoom));
+    transition: background-size $transition-speed ease-out;
+  }
+}
+
+.canvas-wrapper {
+  background: transparent;
+  box-shadow: none;
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
