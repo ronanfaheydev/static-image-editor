@@ -1,4 +1,4 @@
-import { EditorObject } from "./editor";
+import { EditorObjectBase } from "./editor";
 import { Format } from "./format";
 
 export interface Template {
@@ -7,7 +7,7 @@ export interface Template {
   description: string;
   createdAt: string;
   format: Format;
-  objects: EditorObject[];
+  objects: EditorObjectBase[];
   thumbnail?: string;
   tags: string[];
   category: string;

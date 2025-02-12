@@ -1,5 +1,4 @@
 import { Project, ProjectMetadata } from "../types/project";
-import { Stage } from "konva/lib/Stage";
 
 const STORAGE_KEY = "image-editor-projects";
 

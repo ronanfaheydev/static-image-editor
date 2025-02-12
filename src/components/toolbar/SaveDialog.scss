@@ -23,3 +23,78 @@
     }
   }
 }
+
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: $modal-z-index;
+}
+
+.save-modal {
+  background: $white;
+  border-radius: $border-radius;
+  padding: $spacing-lg;
+  width: 90%;
+  max-width: 500px;
+  box-shadow: $modal-shadow;
+
+  &-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: $spacing-lg;
+
+    h2 {
+      margin: 0;
+    }
+
+    .close-button {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      padding: 0;
+
+      &:hover {
+        color: $primary-color;
+      }
+    }
+  }
+
+  &-preview {
+    background: $background-color;
+    padding: $spacing-md;
+    border-radius: $border-radius;
+    margin-bottom: $spacing-lg;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  &-options {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: $spacing-md;
+
+    button {
+      padding: $spacing-md;
+      border: 1px solid $border-color;
+      border-radius: $border-radius;
+      background: $white;
+      cursor: pointer;
+      transition: all $transition-speed ease;
+
+      &:hover {
+        background: $background-color;
+        border-color: $primary-color;
+      }
+    }
+  }
+}

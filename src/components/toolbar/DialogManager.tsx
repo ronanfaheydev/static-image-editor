@@ -7,21 +7,22 @@ import { LoadDialog } from "./LoadDialog";
 import { TemplateBrowser } from "./TemplateBrowser";
 import { SaveTemplateDialog } from "./SaveTemplateDialog";
 import { ExportJSONDialog } from "./ExportJSONDialog";
+import { MediaLibraryDialog } from "./MediaLibraryDialog";
 
 import { Format } from "../../types/format";
-import { EditorObject } from "../../types/editor";
+import { EditorObjectBase } from "../../types/editor";
 import type Konva from "konva";
-import { Project } from "../../types/project";
+import { DialogKey, Project } from "../../types/project";
 import { Template } from "../../types/template";
 
 import "./DialogManager.scss";
 
 interface DialogManagerProps {
   dialogs: {
-    [key: string]: {
+    [key: string | DialogKey]: {
       isOpen: boolean;
       props: {
-        objects: EditorObject[];
+        objects: EditorObjectBase[];
         formats: Format[];
         customFormats: Format[];
         stage: Konva.Stage;
@@ -33,48 +34,63 @@ interface DialogManagerProps {
       };
     };
   };
-  closeDialog: (dialogName: string) => void;
+  closeDialog: (dialogName: DialogKey) => void;
+  openDialog: (dialogName: DialogKey) => void;
 }
 
 export const DialogManager: React.FC<DialogManagerProps> = ({
   dialogs,
   closeDialog,
+  openDialog,
 }) => (
   <>
     <PreviewDialog
       isOpen={dialogs.preview.isOpen}
       onClose={() => closeDialog("preview")}
+      openDialog={openDialog}
       {...dialogs.preview.props}
     />
     <ExportDialog
       isOpen={dialogs.export.isOpen}
       onClose={() => closeDialog("export")}
+      openDialog={openDialog}
       {...dialogs.export.props}
     />
     <SaveDialog
       isOpen={dialogs.save.isOpen}
       onClose={() => closeDialog("save")}
+      openDialog={openDialog}
       {...dialogs.save.props}
     />
     <LoadDialog
       isOpen={dialogs.load.isOpen}
-      onClose={() => closeDialog("load")}
+      onClose={() => closeDialog("loadTemplate")}
+      openDialog={openDialog}
       {...dialogs.load.props}
     />
     <ExportJSONDialog
       isOpen={dialogs.exportJSON.isOpen}
       onClose={() => closeDialog("exportJSON")}
+      openDialog={openDialog}
       {...dialogs.exportJSON.props}
     />
     <TemplateBrowser
       isOpen={dialogs.templateBrowser.isOpen}
       onClose={() => closeDialog("templateBrowser")}
+      openDialog={openDialog}
       {...dialogs.templateBrowser.props}
     />
     <SaveTemplateDialog
       isOpen={dialogs.saveTemplate.isOpen}
       onClose={() => closeDialog("saveTemplate")}
+      openDialog={openDialog}
       {...dialogs.saveTemplate.props}
+    />
+    <MediaLibraryDialog
+      isOpen={dialogs.mediaLibrary.isOpen}
+      onClose={() => closeDialog("mediaLibrary")}
+      openDialog={openDialog}
+      {...dialogs.mediaLibrary.props}
     />
   </>
 );

@@ -5,35 +5,180 @@
   grid-column: 1 / -1;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
   background-color: $white;
   border-bottom: 1px solid $border-color;
-  flex-wrap: wrap;
-  flex-shrink: 0;
+  height: $toolbar-height;
 
-  button {
-    padding: 0.5rem 1rem;
-    border: 1px solid $border-color;
-    background-color: $white;
-    border-radius: $border-radius;
-    cursor: pointer;
-    font: {
-      size: 0.9rem;
-    }
-    color: $text-color;
-    min-width: 80px;
-    height: 36px;
+  .toolbar-title {
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 1rem;
+    flex-direction: row;
+
+    h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: $text-color;
+      margin: 0;
+    }
+
+    h3 {
+      font-size: 0.875rem;
+      color: $text-color;
+      margin: 0;
+    }
+  }
+
+  .toolbar-main {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    select {
+      padding: 0.5rem;
+      height: auto;
+      border-radius: $border-radius;
+      background-color: $white;
+      font-size: 0.9rem;
+      // caret not visible
+      &::-webkit-calendar-picker-indicator {
+        display: none;
+      }
+    }
+
+    button {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem;
+      border: none;
+      border-radius: $border-radius;
+      background-color: $white;
+      font-size: 0.9rem;
+      cursor: pointer;
+
+      &:hover {
+        background-color: $background-color;
+      }
+    }
+  }
+
+  .toolbar-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .toolbar-time {
+    color: darken($border-color, 30%);
+    font-size: 0.9rem;
+  }
+
+  .toolbar-history {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0 1rem;
+    border-left: 1px solid $border-color;
+    border-right: 1px solid $border-color;
+
+    button {
+      padding: 0.5rem;
+      border: none;
+      background: none;
+      cursor: pointer;
+      opacity: 0.7;
+
+      &:hover {
+        opacity: 1;
+      }
+
+      &:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+      }
+    }
+  }
+
+  .toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    .icon-button {
+      padding: 0.5rem;
+      border: none;
+      background: none;
+      cursor: pointer;
+      opacity: 0.7;
+
+      &:hover {
+        opacity: 1;
+      }
+    }
+
+    .review-button {
+      padding: 0.5rem 1rem;
+      background-color: $primary-color;
+      color: $white;
+      border: none;
+      border-radius: $border-radius;
+      font-weight: 500;
+      cursor: pointer;
+
+      &:hover {
+        background-color: darken($primary-color, 5%);
+      }
+    }
+  }
+
+  .toolbar-notifications {
+    .icon-button {
+      padding: 0.5rem;
+      border: none;
+      background: none;
+      cursor: pointer;
+      opacity: 0.7;
+
+      &:hover {
+        opacity: 1;
+      }
+    }
+  }
+}
+
+.dropdown {
+  position: relative;
+
+  &-content {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background-color: $white;
+    border-radius: $border-radius;
+    padding: 0.5rem;
+    min-width: 150px;
+    box-shadow: $modal-shadow;
+    z-index: 1000;
+  }
+
+  &:hover .dropdown-content {
+    display: block;
+  }
+
+  button {
+    width: 100%;
+    text-align: left;
+    border: none;
+    background: none;
+    padding: 0.5rem;
+    cursor: pointer;
 
     &:hover {
       background-color: $background-color;
-    }
-
-    &:active {
-      background-color: darken($background-color, 5%);
     }
   }
 }
@@ -52,4 +197,9 @@
 .file-controls,
 .template-controls {
   @extend %control-group;
+}
+
+.icon {
+  font-size: 24px;
+  color: $text-color;
 }

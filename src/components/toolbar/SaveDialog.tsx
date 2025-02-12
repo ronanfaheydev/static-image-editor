@@ -1,9 +1,7 @@
-import React, { useState } from "react";
+import React from "react";
 import { Stage } from "konva/lib/Stage";
 import { Format } from "../../types/format";
-import { EditorObject } from "../../types/editor";
-import { saveProject } from "../../utils/projectManager";
-import { Project } from "../../types/project";
+import { EditorObjectBase } from "../../types/editor";
 import "./SaveDialog.scss";
 
 interface SaveDialogProps {
@@ -11,8 +9,8 @@ interface SaveDialogProps {
   onClose: () => void;
   stage: Stage | null;
   currentFormat: Format;
-  customFormats: Format[];
-  objects: EditorObject[];
+  objects: EditorObjectBase[];
+  openDialog: (dialogName: string) => void;
 }
 
 export const SaveDialog: React.FC<SaveDialogProps> = ({
@@ -20,52 +18,70 @@ export const SaveDialog: React.FC<SaveDialogProps> = ({
   onClose,
   stage,
   currentFormat,
-  customFormats,
   objects,
+  openDialog,
 }) => {
-  const [projectName, setProjectName] = useState("");
-
-  const handleSave = async () => {
-    const project: Project = {
-      id: Date.now().toString(),
-      name: projectName,
-      objects,
-      currentFormat,
-      customFormats,
-      lastModified: new Date(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    await saveProject(project);
-    onClose();
-    setProjectName("");
-  };
-
   if (!isOpen) return null;
 
+  const handleSaveAsTemplate = () => {
+    onClose();
+    openDialog("saveTemplate");
+  };
+
+  const handleSaveAsImage = () => {
+    onClose();
+    openDialog("export");
+  };
+
+  const handleSaveAsJSON = () => {
+    const projectData = {
+      objects,
+      currentFormat,
+      version: "1.0",
+    };
+
+    const blob = new Blob([JSON.stringify(projectData, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "creative-" + Date.now() + ".json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    onClose();
+  };
+
   return (
-    <div className="save-modal">
-      <div className="save-modal-content">
-        <h3>Save Project</h3>
-        <div className="form-group">
-          <label>Project Name</label>
-          <input
-            type="text"
-            value={projectName}
-            onChange={(e) => setProjectName(e.target.value)}
-            placeholder="Enter project name"
-          />
-        </div>
-        <div className="modal-actions">
-          <button onClick={onClose}>Cancel</button>
-          <button
-            type="submit"
-            onClick={handleSave}
-            disabled={!projectName.trim()}
-          >
-            Save
+    <div className="modal-overlay">
+      <div className="save-modal">
+        <div className="save-modal-header">
+          <h2>Save Project</h2>
+          <button className="close-button" onClick={onClose}>
+            ×
           </button>
+        </div>
+
+        <div className="save-modal-preview">
+          {stage && (
+            <img
+              src={stage.toDataURL()}
+              alt="Preview"
+              style={{
+                maxWidth: "100%",
+                maxHeight: "200px",
+                objectFit: "contain",
+              }}
+            />
+          )}
+        </div>
+
+        <div className="save-modal-options">
+          <button onClick={handleSaveAsTemplate}>Save as Template</button>
+          <button onClick={handleSaveAsImage}>Save as Image</button>
+          <button onClick={handleSaveAsJSON}>Save as JSON</button>
         </div>
       </div>
     </div>

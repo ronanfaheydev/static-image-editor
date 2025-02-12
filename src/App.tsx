@@ -1,12 +1,20 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import {
-  EditorObject,
+  EditorObjectBase,
   ImageObject,
   TextObject,
   ShapeObject,
   FormatEditMode,
   BlendMode,
+  GroupObject,
+  EditorState,
 } from "./types/editor";
+import {
+  DialogState,
+  DialogKey,
+  PositionProp,
+  EditorObjectKey,
+} from "./types/project";
 import "./App.scss";
 import { useHistory } from "./hooks/useHistory";
 import { useHotkeys } from "react-hotkeys-hook";
@@ -18,72 +26,17 @@ import { KonvaEventObject } from "konva/lib/Node";
 import { Project } from "./types/project";
 import { Toolbar } from "./components/toolbar/Toolbar";
 import { Canvas } from "./components/Canvas";
+import { useContainerSize } from "./hooks/useContainerSize";
+import { ResizeHandle } from "./components/ResizeHandle";
+import type Konva from "konva";
 import { DialogManager } from "./components/toolbar/DialogManager";
-
-// Add these constants back
-const CANVAS_WIDTH = 1600;
-const CANVAS_HEIGHT = 1200;
-
-// Types
-interface EditorState {
-  selectedIds: string[];
-  tool: "select" | "image" | "text" | "shape";
-  zoom: number;
-  formatEditMode: FormatEditMode;
-  backgroundColor: string;
-  backgroundOpacity: number;
-}
-
-// Add these type definitions at the top with other interfaces
-type PositionProp = "position" | "size" | "rotation";
-type EditorObjectKey = keyof EditorObject;
-
-// Add at the top with other interfaces
-interface DialogState {
-  preview: { isOpen: boolean; props: Record<string, unknown> };
-  export: {
-    isOpen: boolean;
-    props: {
-      stage: Konva.Stage | null;
-      currentFormat: Format;
-      objects: EditorObject[];
-    };
-  };
-  save: {
-    isOpen: boolean;
-    props: {
-      stage: Konva.Stage | null;
-      currentFormat: Format;
-      customFormats: Format[];
-      objects: EditorObject[];
-    };
-  };
-  load: {
-    isOpen: boolean;
-    props: { onLoad?: (project: Project) => void };
-  };
-  exportJSON: {
-    isOpen: boolean;
-    props: { project?: Project };
-  };
-  templateBrowser: {
-    isOpen: boolean;
-    props: { onSelect?: (template: Template) => void };
-  };
-  saveTemplate: {
-    isOpen: boolean;
-    props: {
-      objects?: EditorObject[];
-      currentFormat?: Format;
-      onSaved?: () => void;
-    };
-  };
-}
-
-// Add this type near other interfaces
-type DialogKey = keyof DialogState;
+import { MediaItem } from "./types/media";
 
 function App() {
+  const mainContentRef = useRef<HTMLDivElement | null>(null);
+  const { width: containerWidth, height: containerHeight } =
+    useContainerSize(mainContentRef);
+
   // Editor state
   const [editorState, setEditorState] = useState<EditorState>({
     selectedIds: [],
@@ -108,7 +61,38 @@ function App() {
     redo,
     canUndo,
     canRedo,
-  } = useHistory<EditorObject[]>([]);
+  } = useHistory<EditorObjectBase[]>([
+    {
+      id: "canvas-background",
+      type: "root",
+      name: "Canvas",
+      visible: true,
+      zIndex: 0,
+      parentId: null,
+      children: [],
+      isExpanded: true,
+      isRoot: true,
+      position: { x: 10, y: 10 },
+      size: currentFormat,
+      rotation: 0,
+      opacity: editorState.backgroundOpacity,
+      blendMode: "normal",
+      fill: editorState.backgroundColor,
+      stroke: "transparent",
+      strokeWidth: 0,
+    },
+  ]);
+
+  // Helper to add object to group
+  const addObjectToGroup = useCallback(
+    (object: EditorObjectBase, groupId?: string) => {
+      setObjects((prev) => {
+        const newObjects = [...prev, { ...object, parentId: groupId || null }];
+        return newObjects;
+      });
+    },
+    [setObjects]
+  );
 
   // Add keyboard shortcuts
   useHotkeys("ctrl+z, cmd+z", (e) => {
@@ -141,7 +125,7 @@ function App() {
 
   // Handle object changes
   const handleObjectChange = useCallback(
-    (id: string, newProps: Partial<EditorObject>) => {
+    (id: string, newProps: Partial<EditorObjectBase>) => {
       console.log("handleObjectChange", id, newProps);
       if (editorState.formatEditMode === "single") {
         setObjects((prev) =>
@@ -155,23 +139,21 @@ function App() {
         );
 
         if (nonPositionProps.length > 0) {
-          const positionChanges = positionProps.reduce<Partial<EditorObject>>(
-            (acc, prop) => {
-              if (prop in newProps) {
-                acc[prop] = newProps[prop];
-              }
-              return acc;
-            },
-            {}
-          );
-
-          const styleChanges = nonPositionProps.reduce<Partial<EditorObject>>(
-            (acc, prop) => {
+          const positionChanges = positionProps.reduce<
+            Partial<EditorObjectBase>
+          >((acc, prop) => {
+            if (prop in newProps) {
               acc[prop] = newProps[prop];
-              return acc;
-            },
-            {}
-          );
+            }
+            return acc;
+          }, {});
+
+          const styleChanges = nonPositionProps.reduce<
+            Partial<EditorObjectBase>
+          >((acc, prop) => {
+            acc[prop] = newProps[prop];
+            return acc;
+          }, {});
 
           setObjects((prev) =>
             prev.map((obj) => {
@@ -205,11 +187,17 @@ function App() {
       if (file) {
         const reader = new FileReader();
         reader.onload = (event) => {
+          const centerX =
+            (containerWidth - currentFormat.width) / 2 +
+            currentFormat.width / 2;
+          const centerY =
+            (containerHeight - currentFormat.height) / 2 +
+            currentFormat.height / 2;
           const newImage: ImageObject = {
             id: `image-${Date.now()}`,
             type: "image",
             src: event.target?.result as string,
-            position: { x: 100, y: 100 },
+            position: { x: centerX - 100, y: centerY - 100 }, // Center the image
             size: { width: 200, height: 200 },
             rotation: 0,
             opacity: 1,
@@ -217,21 +205,31 @@ function App() {
             name: "New Image",
             zIndex: objects.length,
             blendMode: "normal" as BlendMode,
+            parentId: "root",
+            children: [],
+            isExpanded: true,
+            isRoot: false,
           };
-          setObjects((prev) => [...prev, newImage]);
+          addObjectToGroup(newImage, "root");
         };
         reader.readAsDataURL(file);
       }
     },
-    [objects.length, setObjects]
+    [
+      addObjectToGroup,
+      objects.length,
+      containerWidth,
+      containerHeight,
+      currentFormat,
+    ]
   );
 
   // Handle adding text
   const handleAddText = useCallback(() => {
     const centerX =
-      (CANVAS_WIDTH - currentFormat.width) / 2 + currentFormat.width / 2;
+      (containerWidth - currentFormat.width) / 2 + currentFormat.width / 2;
     const centerY =
-      (CANVAS_HEIGHT - currentFormat.height) / 2 + currentFormat.height / 2;
+      (containerHeight - currentFormat.height) / 2 + currentFormat.height / 2;
 
     const newText: TextObject = {
       id: `text-${Date.now()}`,
@@ -248,9 +246,17 @@ function App() {
       name: "New Text",
       zIndex: objects.length,
       blendMode: "normal" as BlendMode,
+      parentId: null,
+      children: [],
     };
     setObjects((prev) => [...prev, newText]);
-  }, [objects.length, setObjects, currentFormat]);
+  }, [
+    containerWidth,
+    containerHeight,
+    currentFormat,
+    objects.length,
+    setObjects,
+  ]);
 
   // Wrap getSelectedObject
   const getSelectedObject = useCallback(() => {
@@ -260,9 +266,11 @@ function App() {
 
   // Wrap createObjectDefaults
   const createObjectDefaults = useCallback(
-    (id: string) => ({
+    (id: string, type: string, index: number) => ({
+      id,
+      type: "shape",
       visible: true,
-      name: `Object ${id}`,
+      name: `${type || "Object"} ${index}`,
       zIndex: objects.length,
       blendMode: "normal" as BlendMode,
     }),
@@ -273,13 +281,13 @@ function App() {
   const handleAddShape = useCallback(
     (shapeType: ShapeObject["shapeType"]) => {
       const centerX =
-        (CANVAS_WIDTH - currentFormat.width) / 2 + currentFormat.width / 2;
+        (containerWidth - currentFormat.width) / 2 + currentFormat.width / 2;
       const centerY =
-        (CANVAS_HEIGHT - currentFormat.height) / 2 + currentFormat.height / 2;
+        (containerHeight - currentFormat.height) / 2 + currentFormat.height / 2;
 
       const id = `shape-${Date.now()}`;
       const newShape: ShapeObject = {
-        ...createObjectDefaults(id),
+        ...createObjectDefaults(id, shapeType, objects.length),
         id,
         type: "shape",
         shapeType,
@@ -291,39 +299,42 @@ function App() {
         rotation: 0,
         opacity: 1,
         blendMode: "normal" as BlendMode,
+        parentId: null,
+        children: [],
+        isExpanded: true,
+        isRoot: false,
       };
       setObjects((prev) => [...prev, newShape]);
     },
-    [setObjects, createObjectDefaults, currentFormat]
-  );
-
-  // Handle reordering layers
-  const handleReorderLayers = useCallback(
-    (startIndex: number, endIndex: number) => {
-      // Get sorted objects first
-      const sortedObjects = [...objects].sort((a, b) => b.zIndex - a.zIndex);
-
-      // Reorder the sorted array
-      const [removed] = sortedObjects.splice(startIndex, 1);
-      sortedObjects.splice(endIndex, 0, removed);
-
-      // Update zIndices based on new order
-      const updatedObjects = sortedObjects.map((obj, index) => ({
-        ...obj,
-        zIndex: sortedObjects.length - index - 1,
-      }));
-
-      setObjects(updatedObjects);
-    },
-    [objects, setObjects]
+    [
+      createObjectDefaults,
+      currentFormat,
+      containerHeight,
+      containerWidth,
+      objects.length,
+      setObjects,
+    ]
   );
 
   // Handle visibility change
   const handleVisibilityChange = useCallback(
     (id: string, visible: boolean) => {
-      setObjects((prev) =>
-        prev.map((obj) => (obj.id === id ? { ...obj, visible } : obj))
-      );
+      setObjects((prev) => {
+        // First, recursively get all child IDs
+        const getAllChildIds = (objId: string): string[] => {
+          const children = prev.filter((obj) => obj.parentId === objId);
+          return [
+            objId,
+            ...children.flatMap((child) => getAllChildIds(child.id)),
+          ];
+        };
+
+        const idsToUpdate = getAllChildIds(id);
+
+        return prev.map((obj) =>
+          idsToUpdate.includes(obj.id) ? { ...obj, visible } : obj
+        );
+      });
     },
     [setObjects]
   );
@@ -336,20 +347,6 @@ function App() {
       );
     },
     [setObjects]
-  );
-
-  // Handle format change
-  const handleFormatChange = useCallback((format: Format) => {
-    setCurrentFormat(format);
-  }, []);
-
-  // Handle custom format add
-  const handleCustomFormatAdd = useCallback(
-    (format: Format) => {
-      setCustomFormats((prev) => [...prev, format]);
-      handleFormatChange(format);
-    },
-    [handleFormatChange]
   );
 
   const stageRef = useRef<Konva.Stage>(null);
@@ -450,6 +447,52 @@ function App() {
     }
   }, []);
 
+  // Add close dialog handler
+  const closeDialog = useCallback((dialogName: DialogKey) => {
+    setDialogs((prev) => ({
+      ...prev,
+      [dialogName]: { ...prev[dialogName], isOpen: false },
+    }));
+  }, []);
+
+  const handleMediaLibrarySelect = useCallback(
+    (mediaItem: MediaItem) => {
+      const centerX =
+        (containerWidth - currentFormat.width) / 2 + currentFormat.width / 2;
+      const centerY =
+        (containerHeight - currentFormat.height) / 2 + currentFormat.height / 2;
+
+      const newImage: ImageObject = {
+        id: `image-${Date.now()}`,
+        type: "image",
+        src: mediaItem.url,
+        position: { x: centerX - 100, y: centerY - 100 },
+        size: { width: 200, height: 200 },
+        rotation: 0,
+        opacity: 1,
+        visible: true,
+        name: mediaItem.name,
+        zIndex: objects.length,
+        blendMode: "normal",
+        parentId: null,
+        children: [],
+        isExpanded: false,
+        isRoot: false,
+      };
+
+      setObjects((prev) => [...prev, newImage]);
+      closeDialog("mediaLibrary");
+    },
+    [
+      containerWidth,
+      containerHeight,
+      currentFormat,
+      objects.length,
+      closeDialog,
+      setObjects,
+    ]
+  );
+
   // Add state for dialogs
   const [dialogs, setDialogs] = useState<DialogState>({
     preview: { isOpen: false, props: {} },
@@ -503,6 +546,12 @@ function App() {
         onSaved: handleTemplateSaved,
       },
     },
+    mediaLibrary: {
+      isOpen: false,
+      props: {
+        onSelect: handleMediaLibrarySelect,
+      },
+    },
   });
 
   // Update the openDialog function to include props
@@ -525,8 +574,136 @@ function App() {
     [currentFormat, customFormats, objects]
   );
 
+  // Add this function to calculate the zoom level
+  const calculateFitZoom = useCallback(
+    (format: Format) => {
+      if (!containerWidth || !containerHeight) return 0.8; // default zoom
+
+      const padding = 40; // padding around the format
+      const horizontalZoom = (containerWidth - padding) / format.width;
+      const verticalZoom = (containerHeight - padding) / format.height;
+
+      return Math.min(horizontalZoom, verticalZoom, 2); // cap at 2x zoom
+    },
+    [containerWidth, containerHeight]
+  );
+
+  // Handle format change
+  const handleFormatChange = useCallback(
+    (format: Format) => {
+      setCurrentFormat(format);
+      setEditorState((prev) => ({
+        ...prev,
+        zoom: calculateFitZoom(format),
+      }));
+
+      // Update root group and background layer sizes
+      setObjects((prev) =>
+        prev.map((obj) => {
+          if (obj.id === "root" || obj.id === "canvas-background") {
+            return {
+              ...obj,
+              size: format,
+              position: { x: 10, y: 10 }, // Reset position to ensure proper centering
+            };
+          }
+          return obj;
+        })
+      );
+    },
+    [calculateFitZoom, setObjects]
+  );
+
+  // Handle custom format add
+  const handleCustomFormatAdd = useCallback(
+    (format: Format) => {
+      setCustomFormats((prev) => [...prev, format]);
+      handleFormatChange(format);
+    },
+    [handleFormatChange]
+  );
+
+  // Initialize zoom when container size changes
+  useEffect(() => {
+    setEditorState((prev) => ({
+      ...prev,
+      zoom: calculateFitZoom(currentFormat),
+    }));
+  }, [containerWidth, containerHeight, currentFormat, calculateFitZoom]);
+
+  // Add state for panel widths
+  const [leftPanelWidth, setLeftPanelWidth] = useState(250);
+  const [rightPanelWidth, setRightPanelWidth] = useState(250);
+
+  const handleLeftPanelResize = useCallback((delta: number) => {
+    setLeftPanelWidth((prev) => Math.min(Math.max(prev + delta, 200), 500));
+  }, []);
+
+  const handleRightPanelResize = useCallback((delta: number) => {
+    setRightPanelWidth((prev) => Math.min(Math.max(prev + delta, 200), 500));
+  }, []);
+
+  // Add group creation handler
+  const handleAddGroup = useCallback(() => {
+    const newGroup: GroupObject = {
+      id: `group-${Date.now()}`,
+      type: "group",
+      name: "New Group",
+      visible: true,
+      zIndex: objects.length,
+      children: [],
+      isExpanded: true,
+      position: { x: 0, y: 0 },
+      size: { width: 0, height: 0 },
+      rotation: 0,
+      opacity: 1,
+      blendMode: "normal",
+      parentId: null,
+    };
+    setObjects((prev) => [...prev, newGroup]);
+  }, [objects.length, setObjects]);
+
+  // Update canvas background when editor state changes
+  useEffect(() => {
+    setObjects((prev) =>
+      prev.map((obj) =>
+        obj.id === "canvas-background"
+          ? {
+              ...obj,
+              opacity: editorState.backgroundOpacity,
+              fill: editorState.backgroundColor,
+            }
+          : obj
+      )
+    );
+  }, [editorState.backgroundOpacity, editorState.backgroundColor, setObjects]);
+
+  const handleDeleteObject = useCallback(
+    (id: string) => {
+      setObjects((prev) => {
+        // First, recursively get all child IDs
+        const getAllChildIds = (objId: string): string[] => {
+          const children = prev.filter((obj) => obj.parentId === objId);
+          return [
+            objId,
+            ...children.flatMap((child) => getAllChildIds(child.id)),
+          ];
+        };
+
+        const idsToRemove = getAllChildIds(id);
+        return prev.filter((obj) => !idsToRemove.includes(obj.id));
+      });
+    },
+    [setObjects]
+  );
+
   return (
-    <div className="editor-container">
+    <div
+      className="editor-container"
+      style={{
+        gridTemplateColumns: `${leftPanelWidth}px 1fr ${rightPanelWidth}px`,
+      }}
+    >
       <Toolbar
         editorState={editorState}
         setEditorState={setEditorState}
@@ -543,15 +720,30 @@ function App() {
         handleFormatEditModeChange={handleFormatEditModeChange}
         openDialog={openDialog}
       />
-      <LayerPanel
-        objects={objects}
-        selectedIds={editorState.selectedIds}
-        onSelect={handleSelect}
-        onReorder={handleReorderLayers}
-        onVisibilityChange={handleVisibilityChange}
-        onNameChange={handleNameChange}
-      />
-      <div className="main-content">
+
+      <div className="panel left-panel" style={{ width: leftPanelWidth }}>
+        <LayerPanel
+          objects={objects}
+          selectedIds={editorState.selectedIds}
+          onSelect={handleSelect}
+          onVisibilityChange={handleVisibilityChange}
+          onNameChange={handleNameChange}
+          currentFormat={currentFormat}
+          handleFormatChange={handleFormatChange}
+          handleCustomFormatAdd={handleCustomFormatAdd}
+          handleFormatEditModeChange={handleFormatEditModeChange}
+          openDialog={openDialog}
+          formatEditMode={editorState.formatEditMode}
+          zoom={editorState.zoom}
+          onZoomChange={(zoom) => setEditorState((prev) => ({ ...prev, zoom }))}
+          onAddGroup={handleAddGroup}
+          setObjects={setObjects}
+          onDelete={handleDeleteObject}
+        />
+        <ResizeHandle side="right" onResize={handleLeftPanelResize} />
+      </div>
+
+      <div className="main-content" ref={mainContentRef}>
         <Canvas
           editorState={editorState}
           stageRef={stageRef}
@@ -566,16 +758,24 @@ function App() {
           handleDragMove={handleDragMove}
         />
       </div>
-      <PropertyPanel
-        selectedObject={getSelectedObject()}
-        onChange={handleObjectChange}
-        editorState={editorState}
-        setEditorState={useCallback((newState: EditorState) => {
-          console.log("Setting editor state to:", newState);
-          setEditorState(newState);
-        }, [])}
+
+      <div className="panel right-panel" style={{ width: rightPanelWidth }}>
+        <PropertyPanel
+          selectedObject={getSelectedObject()}
+          onChange={handleObjectChange}
+          editorState={editorState}
+          setEditorState={useCallback((newState: EditorState) => {
+            console.log("Setting editor state to:", newState);
+            setEditorState(newState);
+          }, [])}
+        />
+        <ResizeHandle side="left" onResize={handleRightPanelResize} />
+      </div>
+      <DialogManager
+        dialogs={dialogs}
+        closeDialog={closeDialog}
+        openDialog={openDialog}
       />
-      <DialogManager dialogs={dialogs} closeDialog={closeDialogByKey} />
     </div>
   );
 }

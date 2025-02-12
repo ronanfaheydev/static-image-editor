@@ -1,8 +1,8 @@
-import React, { useRef } from "react";
-import { Stage, Layer, Rect } from "react-konva";
+import React, { useMemo, useRef } from "react";
+import { Stage, Layer, Rect, Group, Transformer } from "react-konva";
 import {
   EditorState,
-  EditorObject,
+  EditorObjectBase,
   ImageObject,
   TextObject,
   ShapeObject,
@@ -14,15 +14,14 @@ import { KonvaEventObject } from "konva/lib/Node";
 import { Format } from "../types/format";
 import { useContainerSize } from "../hooks/useContainerSize";
 import "./Canvas.scss";
-
+import type Konva from "konva";
 interface CanvasProps {
   editorState: EditorState;
   stageRef: React.RefObject<Konva.Stage>;
-  objects: EditorObject[];
+  objects: EditorObjectBase[];
   stagePosition: { x: number; y: number };
-  currentFormat: Format;
   handleSelect: (id: string | null) => void;
-  handleObjectChange: (id: string, changes: Partial<EditorObject>) => void;
+  handleObjectChange: (id: string, changes: Partial<EditorObjectBase>) => void;
   handleWheel: (e: KonvaEventObject<WheelEvent>) => void;
   handleDragStart: (e: KonvaEventObject<DragEvent>) => void;
   handleDragEnd: (e: KonvaEventObject<DragEvent>) => void;
@@ -34,7 +33,6 @@ export const Canvas: React.FC<CanvasProps> = ({
   stageRef,
   objects,
   stagePosition,
-  currentFormat,
   handleSelect,
   handleObjectChange,
   handleWheel,
@@ -58,6 +56,65 @@ export const Canvas: React.FC<CanvasProps> = ({
       handleSelect(null);
     }
   };
+
+  const groupedObjects = useMemo(
+    () =>
+      objects
+        .map((obj) => {
+          const children = objects.filter((o) => o.parentId === obj.id);
+          return { ...obj, children };
+        })
+        .filter((obj) => obj.children.length > 0),
+    [objects]
+  );
+
+  // take root type as a rect
+  const root = objects.find((obj) => obj.type === "root") as ShapeObject;
+  const ungroupedObjects = objects.filter((obj) => obj.parentId === null);
+
+  const renderObject = (obj: EditorObjectBase) => {
+    if (!obj.visible) return null;
+    if (obj.type === "image") {
+      return (
+        <ImageObjectComponent
+          key={obj.id}
+          object={obj as ImageObject}
+          isSelected={editorState.selectedIds.includes(obj.id)}
+          onSelect={() => handleSelect(obj.id)}
+          onChange={(newProps) => handleObjectChange(obj.id, newProps)}
+        />
+      );
+    }
+    if (obj.type === "text") {
+      return (
+        <TextObjectComponent
+          key={obj.id}
+          object={obj as TextObject}
+          isSelected={editorState.selectedIds.includes(obj.id)}
+          onSelect={() => handleSelect(obj.id)}
+          onChange={(newProps) => handleObjectChange(obj.id, newProps)}
+        />
+      );
+    }
+    if (obj.type === "shape") {
+      return (
+        <ShapeObjectComponent
+          key={obj.id}
+          object={obj as ShapeObject}
+          isSelected={editorState.selectedIds.includes(obj.id)}
+          onSelect={() => handleSelect(obj.id)}
+          onChange={(newProps) => handleObjectChange(obj.id, newProps)}
+        />
+      );
+    }
+    return null;
+  };
+
+  const objectsToRender = useMemo(() => {
+    return [...groupedObjects, ...ungroupedObjects].sort(
+      (a, b) => a.zIndex - b.zIndex
+    );
+  }, [groupedObjects, ungroupedObjects]);
 
   return (
     <div
@@ -91,61 +148,36 @@ export const Canvas: React.FC<CanvasProps> = ({
           onClick={handleBackgroundClick}
         >
           <Layer>
-            <Rect
-              x={(CANVAS_WIDTH - currentFormat.width) / 2}
-              y={(CANVAS_HEIGHT - currentFormat.height) / 2}
-              width={currentFormat.width}
-              height={currentFormat.height}
-              fill={editorState.backgroundColor}
-              opacity={editorState.backgroundOpacity}
-              onClick={handleBackgroundClick}
-              name="format-background"
-            />
-            {objects
-              .sort((a, b) => a.zIndex - b.zIndex)
-              .map((obj) => {
-                if (!obj.visible) return null;
-                if (obj.type === "image") {
-                  return (
-                    <ImageObjectComponent
-                      key={obj.id}
-                      object={obj as ImageObject}
-                      isSelected={editorState.selectedIds.includes(obj.id)}
-                      onSelect={() => handleSelect(obj.id)}
-                      onChange={(newProps) =>
-                        handleObjectChange(obj.id, newProps)
-                      }
-                    />
-                  );
-                }
-                if (obj.type === "text") {
-                  return (
-                    <TextObjectComponent
-                      key={obj.id}
-                      object={obj as TextObject}
-                      isSelected={editorState.selectedIds.includes(obj.id)}
-                      onSelect={() => handleSelect(obj.id)}
-                      onChange={(newProps) =>
-                        handleObjectChange(obj.id, newProps)
-                      }
-                    />
-                  );
-                }
-                if (obj.type === "shape") {
-                  return (
-                    <ShapeObjectComponent
-                      key={obj.id}
-                      object={obj as ShapeObject}
-                      isSelected={editorState.selectedIds.includes(obj.id)}
-                      onSelect={() => handleSelect(obj.id)}
-                      onChange={(newProps) =>
-                        handleObjectChange(obj.id, newProps)
-                      }
-                    />
-                  );
-                }
-                return null;
-              })}
+            {root && (
+              <Rect
+                x={root.position.x}
+                y={root.position.y}
+                width={root.size.width}
+                height={root.size.height}
+                fill={root.fill}
+                opacity={root.opacity}
+                stroke={root.stroke}
+                strokeWidth={root.strokeWidth}
+              />
+            )}
+            {objectsToRender.map((obj) => {
+              if (obj.children.length > 0) {
+                return (
+                  <Group
+                    key={obj.id}
+                    x={obj.position.x}
+                    y={obj.position.y}
+                    width={obj.size.width}
+                    height={obj.size.height}
+                    fill={obj.fill}
+                    opacity={obj.opacity}
+                  >
+                    {obj.children.map((child) => renderObject(child))}
+                  </Group>
+                );
+              }
+              return renderObject(obj);
+            })}
           </Layer>
         </Stage>
       </div>

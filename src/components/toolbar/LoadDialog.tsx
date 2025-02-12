@@ -43,7 +43,12 @@ export const LoadDialog: React.FC<LoadDialogProps> = ({
   return (
     <div className="load-modal">
       <div className="load-modal-content">
-        <h3>Load Project</h3>
+        <h3>
+          Load Project
+          <button className="close-button" onClick={onClose}>
+            ×
+          </button>
+        </h3>
         <div className="import-section">
           <h4>Import from JSON</h4>
           <input

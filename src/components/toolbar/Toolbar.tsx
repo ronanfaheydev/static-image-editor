@@ -1,8 +1,18 @@
 import React from "react";
+
 import { EditorState, ShapeObject } from "../../types/editor";
-import { Format } from "../../types/format";
-import { FormatSelector } from "./FormatSelector";
-import { FormatEditModeSelector } from "./FormatEditModeSelector";
+import Bell from "../../assets/icons/bell.svg";
+import Save from "../../assets/icons/download.svg";
+import Layout from "../../assets/icons/layout.svg";
+import Undo from "../../assets/icons/undo.svg";
+import Redo from "../../assets/icons/redo.svg";
+import Image from "../../assets/icons/image-2.svg";
+import Square from "../../assets/icons/square.svg";
+import Text from "../../assets/icons/text.svg";
+import Speedometer from "../../assets/icons/speedometer.svg";
+import Select from "../../assets/icons/select.svg";
+
+import "./Toolbar.scss";
 
 interface ToolbarProps {
   editorState: EditorState;
@@ -16,16 +26,11 @@ interface ToolbarProps {
   redo: () => void;
   canUndo: boolean;
   canRedo: boolean;
-  currentFormat: Format;
-  handleFormatChange: (format: Format) => void;
-  handleCustomFormatAdd: (format: Format) => void;
-  handleFormatEditModeChange: (mode: string) => void;
+  lastModified?: Date;
   openDialog: (dialogName: string) => void;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
-  editorState,
-  setEditorState,
   handleAddText,
   handleAddShape,
   handleImageUpload,
@@ -33,112 +38,121 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   redo,
   canUndo,
   canRedo,
-  currentFormat,
-  handleFormatChange,
-  handleCustomFormatAdd,
-  handleFormatEditModeChange,
+  lastModified,
   openDialog,
-}) => (
-  <div className="toolbar">
-    <button
-      className={editorState.tool === "select" ? "active" : ""}
-      onClick={() => setEditorState((prev) => ({ ...prev, tool: "select" }))}
-    >
-      Select
-    </button>
-    <button
-      className={editorState.tool === "image" ? "active" : ""}
-      onClick={() => setEditorState((prev) => ({ ...prev, tool: "image" }))}
-    >
-      Image
-    </button>
-    <button
-      className={editorState.tool === "text" ? "active" : ""}
-      onClick={() => setEditorState((prev) => ({ ...prev, tool: "text" }))}
-    >
-      Text
-    </button>
-    <button
-      className={editorState.tool === "shape" ? "active" : ""}
-      onClick={() => setEditorState((prev) => ({ ...prev, tool: "shape" }))}
-    >
-      Shape
-    </button>
-    <div className="zoom-controls">
-      <button
-        onClick={() =>
-          setEditorState((prev) => ({ ...prev, zoom: prev.zoom * 1.1 }))
-        }
-      >
-        Zoom In
-      </button>
-      <button
-        onClick={() =>
-          setEditorState((prev) => ({ ...prev, zoom: prev.zoom / 1.1 }))
-        }
-      >
-        Zoom Out
-      </button>
+}) => {
+  const formatTime = (date?: Date) => {
+    if (!date) return "";
+    return new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "numeric",
+      hour12: true,
+    }).format(date);
+  };
+
+  return (
+    <div className="toolbar">
+      <div className="toolbar-title">
+        <h1>Creative 1</h1>
+        <h3>Static creative</h3>
+        <Speedometer />
+      </div>
+
+      <div className="toolbar-main">
+        <button>
+          <Select />
+        </button>
+        <div className="dropdown">
+          <button className="dropdown-trigger">
+            <span className="icon">
+              <Image />
+            </span>
+          </button>
+          <div className="dropdown-content">
+            <button onClick={() => openDialog("mediaLibrary")}>
+              <Image />
+            </button>
+          </div>
+        </div>
+
+        <div className="dropdown">
+          <button className="dropdown-trigger">
+            <span className="icon">
+              <Square />
+            </span>
+          </button>
+          <div className="dropdown-content">
+            <button onClick={() => handleAddShape("rectangle")}>
+              Rectangle
+            </button>
+            <button onClick={() => handleAddShape("circle")}>Circle</button>
+            <button onClick={() => handleAddShape("star")}>Star</button>
+            <button onClick={() => handleAddShape("line")}>Line</button>
+            <button onClick={() => handleAddShape("curve")}>Curve</button>
+          </div>
+        </div>
+
+        <button onClick={handleAddText}>
+          <span className="icon">
+            <Text />
+          </span>
+        </button>
+      </div>
+
+      <div className="toolbar-right">
+        <div className="toolbar-time">
+          Last modified: {formatTime(lastModified)}
+        </div>
+
+        <div className="toolbar-history">
+          <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">
+            <span className="icon">
+              <Undo />
+            </span>
+          </button>
+          <button
+            onClick={redo}
+            disabled={!canRedo}
+            title="Redo (Ctrl+Shift+Z)"
+          >
+            <span className="icon">
+              <Redo />
+            </span>
+          </button>
+        </div>
+
+        <div className="toolbar-actions">
+          <button
+            className="icon-button"
+            title="Layout"
+            onClick={() => openDialog("templateBrowser")}
+          >
+            <span className="icon">
+              <Layout />
+            </span>
+          </button>
+          <button
+            className="icon-button"
+            title="Save"
+            onClick={() => openDialog("save")}
+          >
+            <span className="icon">
+              <Save />
+            </span>
+          </button>
+          <button className="icon-button" title="Review">
+            <span className="">Review</span>
+          </button>
+        </div>
+
+        <div className="toolbar-notifications">
+          <button className="icon-button" title="Notifications">
+            <span className="icon">
+              <Bell />
+            </span>
+          </button>
+        </div>
+      </div>
     </div>
-    <input
-      type="file"
-      accept="image/*"
-      style={{ display: "none" }}
-      id="image-upload"
-      onChange={handleImageUpload}
-    />
-    <label htmlFor="image-upload">
-      <button
-        className={editorState.tool === "image" ? "active" : ""}
-        onClick={() => document.getElementById("image-upload")?.click()}
-      >
-        Upload Image
-      </button>
-    </label>
-    <button
-      className={editorState.tool === "text" ? "active" : ""}
-      onClick={handleAddText}
-    >
-      Add Text
-    </button>
-    <div className="shape-controls">
-      <button onClick={() => handleAddShape("rectangle")}>Rectangle</button>
-      <button onClick={() => handleAddShape("circle")}>Circle</button>
-      <button onClick={() => handleAddShape("star")}>Star</button>
-      <button onClick={() => handleAddShape("line")}>Line</button>
-      <button onClick={() => handleAddShape("curve")}>Curve</button>
-    </div>
-    <div className="history-controls">
-      <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">
-        Undo
-      </button>
-      <button onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Shift+Z)">
-        Redo
-      </button>
-    </div>
-    <FormatSelector
-      currentFormat={currentFormat}
-      onFormatChange={handleFormatChange}
-      onCustomFormatAdd={handleCustomFormatAdd}
-    />
-    <FormatEditModeSelector
-      mode={editorState.formatEditMode}
-      onChange={handleFormatEditModeChange}
-    />
-    <button onClick={() => openDialog("preview")}>Preview All</button>
-    <button onClick={() => openDialog("export")}>Export</button>
-    <div className="file-controls">
-      <button onClick={() => openDialog("save")}>Save</button>
-      <button onClick={() => openDialog("load")}>Load</button>
-      <button onClick={() => openDialog("exportJSON")}>Export JSON</button>
-    </div>
-    <div className="template-controls">
-      <button onClick={() => openDialog("templateBrowser")}>
-        Browse Templates
-      </button>
-      <button onClick={() => openDialog("saveTemplate")}>
-        Save as Template
-      </button>
-    </div>
-  </div>
-);
+  );
+};

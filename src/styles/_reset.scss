@@ -1,0 +1,124 @@
+@import "./variables";
+
+/* Base styles */
+:root {
+  font-family: $font-family;
+  line-height: $line-height-base;
+  font-weight: $font-weight-normal;
+  color: $text-color;
+  background-color: $background-color;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Typography */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  margin: 0 0 $spacing-base;
+  font-weight: $font-weight-bold;
+  line-height: $line-height-heading;
+  color: $text-color;
+}
+
+h1 {
+  font-size: $font-size-h1;
+}
+
+h2 {
+  font-size: $font-size-h2;
+}
+
+h3 {
+  font-size: $font-size-h3;
+}
+
+p {
+  margin: 0 0 $spacing-base;
+  font-size: $font-size-base;
+  line-height: $line-height-base;
+}
+
+/* Links */
+a {
+  color: $primary-color;
+  text-decoration: none;
+  transition: color $transition-speed ease;
+
+  &:hover {
+    color: $secondary-color;
+  }
+}
+
+/* Buttons */
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-sm $spacing-md;
+  border-radius: $border-radius;
+  border: 1px solid $border-color;
+  background: $white;
+  color: $text-color;
+  font-size: $font-size-base;
+  font-weight: $font-weight-medium;
+  cursor: pointer;
+  transition: all $transition-speed ease;
+
+  &:hover {
+    background: $background-color;
+    border-color: $primary-color;
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba($primary-color, 0.2);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+/* Form inputs */
+input,
+select,
+textarea {
+  width: 100%;
+  padding: $spacing-sm $spacing-md;
+  border: 1px solid $border-color;
+  border-radius: $border-radius;
+  background: $input-background-color;
+  color: $text-color;
+  font-size: $font-size-base;
+  line-height: $line-height-base;
+  transition: all $transition-speed ease;
+
+  &:focus {
+    outline: none;
+    border-color: $primary-color;
+    box-shadow: 0 0 0 2px rgba($primary-color, 0.1);
+  }
+
+  &::placeholder {
+    color: rgba($text-color, 0.5);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.modal-content {
+  background-color: $background-color;
+  border: 1px solid $border-color;
+  border-radius: $border-radius;
+  padding: $spacing-md;
+}

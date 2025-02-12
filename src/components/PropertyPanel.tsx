@@ -1,6 +1,6 @@
 import React from "react";
 import {
-  EditorObject,
+  EditorObjectBase,
   TextObject,
   ShapeObject,
   BlendMode,
@@ -9,8 +9,8 @@ import {
 import "./PropertyPanel.scss";
 
 interface PropertyPanelProps {
-  selectedObject: EditorObject | null;
-  onChange: (id: string, changes: Partial<EditorObject>) => void;
+  selectedObject: EditorObjectBase | null;
+  onChange: (id: string, changes: Partial<EditorObjectBase>) => void;
   editorState: EditorState;
   setEditorState: (state: EditorState) => void;
 }
@@ -85,7 +85,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
 
   const handleNumberChange = (
     e: React.ChangeEvent<HTMLInputElement>,
-    property: keyof EditorObject
+    property: keyof EditorObjectBase
   ) => {
     if (!selectedObject) return;
     const value = parseFloat(e.target.value);

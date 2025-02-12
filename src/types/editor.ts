@@ -24,9 +24,9 @@ export type BlendMode =
   | "luminosity"
   | "color";
 
-export interface EditorObject {
+export interface EditorObjectBase {
   id: string;
-  type: "image" | "text" | "shape";
+  type: "image" | "text" | "shape" | "group" | "root";
   position: Position;
   size: Size;
   rotation: number;
@@ -35,16 +35,18 @@ export interface EditorObject {
   name: string;
   zIndex: number;
   blendMode: BlendMode;
-  fontSize?: number;
-  fontFamily?: string;
+  parentId: string | null;
+  children: EditorObjectBase[];
+  isExpanded: boolean;
+  isRoot: boolean;
 }
 
-export interface ImageObject extends EditorObject {
+export interface ImageObject extends EditorObjectBase {
   type: "image";
   src: string;
 }
 
-export interface TextObject extends EditorObject {
+export interface TextObject extends EditorObjectBase {
   type: "text";
   text: string;
   fontSize: number;
@@ -60,7 +62,7 @@ export interface CurveConfig {
   closed: boolean;
 }
 
-export interface ShapeObject extends EditorObject {
+export interface ShapeObject extends EditorObjectBase {
   type: "shape";
   shapeType: ShapeType;
   fill: string;
@@ -79,3 +81,15 @@ export interface EditorState {
   backgroundColor: string;
   backgroundOpacity: number;
 }
+
+export interface GroupObject {
+  id: string;
+  type: "group";
+  name: string;
+  visible: boolean;
+  zIndex: number;
+  children: EditorObjectBase[];
+  isExpanded?: boolean;
+}
+
+export type EditorObject = ImageObject | TextObject | ShapeObject | GroupObject;

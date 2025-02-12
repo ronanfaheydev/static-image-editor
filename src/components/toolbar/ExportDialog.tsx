@@ -1,6 +1,6 @@
 import React, { useCallback, useState, useRef, useEffect } from "react";
 import { Format } from "../../types/format";
-import { EditorObject } from "../../types/editor";
+import { EditorObjectBase } from "../../types/editor";
 import { Layer, Stage, Rect } from "react-konva";
 import { ImageObjectComponent } from "../shapes/ImageObject";
 import { TextObjectComponent } from "../shapes/TextObject";
@@ -13,7 +13,7 @@ interface ExportDialogProps {
   onClose: () => void;
   stage: Konva.Stage | null;
   currentFormat: Format;
-  objects: EditorObject[];
+  objects: EditorObjectBase[];
 }
 
 interface ExportOptions {

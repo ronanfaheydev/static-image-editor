@@ -1,14 +1,36 @@
 // Colors
-$primary-color: #2196f3;
-$secondary-color: #e6e6e6;
-$text-color: #000000;
+
+$primary-color: #21f3aa;
+$secondary-color: #0e9f50;
+$highlight-color: #64ffef;
+
 $border-color: #ddd;
 $background-color: #f5f5f5;
+$input-background-color: #efefef;
+$input-height: 48px;
+$text-color: #000000;
 $white: #ffffff;
+
+// Typography
+$font-family: system-ui, -apple-system, sans-serif;
+$font-size-base: 14px;
+$font-size-h1: 24px;
+$font-size-h2: 20px;
+$font-size-h3: 16px;
+$line-height-base: 1.5;
+$line-height-heading: 1.2;
+$font-weight-normal: 400;
+$font-weight-medium: 500;
+$font-weight-bold: 600;
+
+// Spacing
+$spacing-base: 16px;
+$spacing-sm: 8px;
+$spacing-md: 12px;
+$spacing-lg: 24px;
 
 // Sizes
 $toolbar-height: auto;
-$sidebar-width: 250px;
 $border-radius: 4px;
 $control-point-size: 8px;
 
