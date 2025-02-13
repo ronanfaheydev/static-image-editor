@@ -1,21 +1,20 @@
-import React, { useMemo, useRef } from "react";
-import { Stage, Layer, Rect, Group, Transformer } from "react-konva";
+import React, { useMemo, useRef, useState, useCallback } from "react";
+import { Stage, Layer, Rect, Group } from "react-konva";
 import {
   EditorState,
   EditorObjectBase,
   ImageObject,
   TextObject,
   ShapeObject,
-  GroupObject,
 } from "../types/editor";
 import { ImageObjectComponent } from "./shapes/ImageObject";
 import { TextObjectComponent } from "./shapes/TextObject";
 import { ShapeObjectComponent } from "./shapes/ShapeObject";
 import { KonvaEventObject } from "konva/lib/Node";
-import { Format } from "../types/format";
 import { useContainerSize } from "../hooks/useContainerSize";
 import "./Canvas.scss";
 import type Konva from "konva";
+import { Guidelines } from "./shapes/Guidelines";
 
 interface CanvasProps {
   editorState: EditorState;
@@ -46,6 +45,51 @@ export const Canvas: React.FC<CanvasProps> = ({
   const { width: CANVAS_WIDTH, height: CANVAS_HEIGHT } =
     useContainerSize(containerRef);
 
+  const [draggedObject, setDraggedObject] = useState<EditorObjectBase | null>(
+    null
+  );
+
+  const snapToObjects = useCallback(
+    (object: EditorObjectBase, newPosition: { x: number; y: number }) => {
+      const snapThreshold = 5;
+      let snappedPosition = { ...newPosition };
+
+      const draggedCenterX = newPosition.x + object.size.width / 2;
+      const draggedCenterY = newPosition.y + object.size.height / 2;
+
+      objects.forEach((obj) => {
+        if (obj.id === object.id || !obj.visible || obj.type === "root") return;
+
+        const targetCenterX = obj.position.x + obj.size.width / 2;
+        const targetCenterY = obj.position.y + obj.size.height / 2;
+
+        if (Math.abs(draggedCenterX - targetCenterX) < snapThreshold) {
+          snappedPosition.x = targetCenterX - object.size.width / 2;
+        }
+
+        if (Math.abs(draggedCenterY - targetCenterY) < snapThreshold) {
+          snappedPosition.y = targetCenterY - object.size.height / 2;
+        }
+      });
+
+      return snappedPosition;
+    },
+    [objects]
+  );
+
+  const _handleObjectChange = useCallback(
+    (id: string, changes: Partial<EditorObjectBase>) => {
+      if (changes.position) {
+        const object = objects.find((obj) => obj.id === id);
+        if (object) {
+          changes.position = snapToObjects(object, changes.position);
+        }
+      }
+      handleObjectChange(id, changes);
+    },
+    [handleObjectChange, snapToObjects, objects]
+  );
+
   // Handle clicking on stage background or format rect
   const handleBackgroundClick = (e: KonvaEventObject<MouseEvent>) => {
     // Only deselect if clicking the stage or format background rect
@@ -74,6 +118,27 @@ export const Canvas: React.FC<CanvasProps> = ({
   const root = objects.find((obj) => obj.type === "root") as ShapeObject;
   const ungroupedObjects = objects.filter((obj) => obj.parentId === null);
 
+  const _handleDragObjectStart = useCallback(
+    (e: KonvaEventObject<DragEvent>, object: EditorObjectBase) => {
+      handleSelect(object.id);
+      setDraggedObject(object);
+    },
+    [handleSelect]
+  );
+
+  const _handleDragObjectEnd = useCallback((e: KonvaEventObject<DragEvent>) => {
+    setDraggedObject(null);
+  }, []);
+
+  const _handleDragObjectMove = useCallback(
+    (e: KonvaEventObject<DragEvent>, object: EditorObjectBase) => {
+      setDraggedObject(object);
+    },
+    []
+  );
+
+  console.log(draggedObject);
+
   const renderObject = (obj: EditorObjectBase) => {
     if (!obj.visible) return null;
     if (obj.type === "image") {
@@ -83,7 +148,10 @@ export const Canvas: React.FC<CanvasProps> = ({
           object={obj as ImageObject}
           isSelected={editorState.selectedIds.includes(obj.id)}
           onSelect={() => handleSelect(obj.id)}
-          onChange={(newProps) => handleObjectChange(obj.id, newProps)}
+          onChange={(newProps) => _handleObjectChange(obj.id, newProps)}
+          onDragStart={_handleDragObjectStart}
+          onDragEnd={_handleDragObjectEnd}
+          onDragMove={_handleDragObjectMove}
         />
       );
     }
@@ -94,7 +162,10 @@ export const Canvas: React.FC<CanvasProps> = ({
           object={obj as TextObject}
           isSelected={editorState.selectedIds.includes(obj.id)}
           onSelect={() => handleSelect(obj.id)}
-          onChange={(newProps) => handleObjectChange(obj.id, newProps)}
+          onChange={(newProps) => _handleObjectChange(obj.id, newProps)}
+          onDragStart={_handleDragObjectStart}
+          onDragEnd={_handleDragObjectEnd}
+          onDragMove={handleDragMove}
         />
       );
     }
@@ -105,7 +176,9 @@ export const Canvas: React.FC<CanvasProps> = ({
           object={obj as ShapeObject}
           isSelected={editorState.selectedIds.includes(obj.id)}
           onSelect={() => handleSelect(obj.id)}
-          onChange={(newProps) => handleObjectChange(obj.id, newProps)}
+          onChange={(newProps) => _handleObjectChange(obj.id, newProps)}
+          onDragStart={_handleDragObjectStart}
+          onDragEnd={_handleDragObjectEnd}
         />
       );
     }
@@ -180,6 +253,11 @@ export const Canvas: React.FC<CanvasProps> = ({
               }
               return renderObject(obj);
             })}
+            <Guidelines
+              draggedObject={draggedObject}
+              objects={objects}
+              snapThreshold={50}
+            />
           </Layer>
         </Stage>
       </div>

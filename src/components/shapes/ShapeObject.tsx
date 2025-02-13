@@ -1,7 +1,7 @@
 import { Shape, Transformer } from "react-konva";
 import type Konva from "konva";
 import { ShapeObject } from "../../types/editor";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { CurveShape } from "./CurveShape";
 import "./ShapeObject.scss";
 
@@ -10,6 +10,14 @@ interface ShapeObjectProps {
   isSelected: boolean;
   onSelect: () => void;
   onChange: (newProps: Partial<ShapeObject>) => void;
+  onDragStart?: (
+    e: Konva.KonvaEventObject<DragEvent>,
+    object: ShapeObject
+  ) => void;
+  onDragEnd?: (
+    e: Konva.KonvaEventObject<DragEvent>,
+    object: ShapeObject
+  ) => void;
 }
 
 // Define BoundBox interface
@@ -25,6 +33,8 @@ export const ShapeObjectComponent = ({
   isSelected,
   onSelect,
   onChange,
+  onDragStart,
+  onDragEnd,
 }: ShapeObjectProps) => {
   const shapeRef = useRef<Konva.Shape>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
@@ -110,6 +120,20 @@ export const ShapeObjectComponent = ({
     }
   };
 
+  const handleDragStart = useCallback(
+    (e: Konva.KonvaEventObject<DragEvent>) => {
+      onDragStart?.(e, object);
+    },
+    [onDragStart, object]
+  );
+
+  const handleDragEnd = useCallback(
+    (e: Konva.KonvaEventObject<DragEvent>) => {
+      onDragEnd?.(e, object);
+    },
+    [onDragEnd, object]
+  );
+
   return (
     <>
       {object.shapeType === "curve" ? (
@@ -137,14 +161,8 @@ export const ShapeObjectComponent = ({
           onTap={onSelect}
           blendMode={object.blendMode}
           globalCompositeOperation={object.blendMode}
-          onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
-            onChange({
-              position: {
-                x: e.target.x(),
-                y: e.target.y(),
-              },
-            });
-          }}
+          onDragEnd={handleDragEnd}
+          onDragStart={handleDragStart}
           onTransformEnd={() => {
             const node = shapeRef.current;
             if (!node) return;

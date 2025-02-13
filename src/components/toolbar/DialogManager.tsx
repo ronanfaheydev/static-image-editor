@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 
 import { PreviewDialog } from "./PreviewDialog";
 import { ExportDialog } from "./ExportDialog";
@@ -36,12 +36,14 @@ interface DialogManagerProps {
   };
   closeDialog: (dialogName: DialogKey) => void;
   openDialog: (dialogName: DialogKey) => void;
+  stage?: Konva.Stage;
 }
 
 export const DialogManager: React.FC<DialogManagerProps> = ({
   dialogs,
   closeDialog,
   openDialog,
+  stage,
 }) => (
   <>
     <PreviewDialog
@@ -91,6 +93,7 @@ export const DialogManager: React.FC<DialogManagerProps> = ({
       onClose={() => closeDialog("mediaLibrary")}
       openDialog={openDialog}
       {...dialogs.mediaLibrary.props}
+      stage={stage}
     />
   </>
 );

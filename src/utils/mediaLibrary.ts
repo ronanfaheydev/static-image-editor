@@ -1,103 +1,107 @@
 import { openDB } from "idb";
 import { MediaItem } from "../types/media";
 
-const DB_NAME = "media-library";
+const DB_NAME = "mediaLibrary";
 const STORE_NAME = "media";
 
-export const mediaDB = () =>
-  openDB(DB_NAME, 1, {
+const openMediaDB = () => {
+  return openDB(DB_NAME, 1, {
     upgrade(db) {
       db.createObjectStore(STORE_NAME, { keyPath: "id" });
     },
   });
+};
 
-export const saveMedia = async (file: File): Promise<MediaItem> => {
-  const db = await mediaDB();
-
-  debugger;
-  // Create thumbnail and get image dimensions
-  const [thumbnail, dimensions] = await createThumbnail(file);
-
-  const item: MediaItem = {
-    id: `media-${Date.now()}`,
-    url: URL.createObjectURL(file),
-    thumbnail,
-    name: file.name,
-    createdAt: new Date(),
-    size: dimensions,
-  };
-
-  debugger;
+export const saveMediaItem = async (item: MediaItem) => {
+  const db = await openMediaDB();
   await db.put(STORE_NAME, item);
-
-  debugger;
   return item;
 };
 
-export const getRecentMedia = async (limit = 10): Promise<MediaItem[]> => {
-  const db = await mediaDB();
-  const items = await db.getAll(STORE_NAME);
-  return items
-    .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-    .slice(0, limit);
-};
-
-const createThumbnail = (
+// Create thumbnail
+const createThumbnailFromFile = async (
   file: File
 ): Promise<[string, { width: number; height: number }]> => {
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+
   return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(file);
-
-    console.log("Creating thumbnail for:", file.name, "size:", file.size);
-
-    // Remove crossOrigin for local files
-    // img.crossOrigin = "anonymous";
-
     img.onload = () => {
       try {
-        console.log("Image loaded:", img.width, "x", img.height);
+        const MAX_THUMB_SIZE = 200;
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d")!;
 
-        // Handle large images by scaling down more
-        const MAX_SIZE = 100;
-        const MAX_DIMENSION = 4096; // Max texture size most browsers support
-
-        // First scale down if image is too large
-        let scaledWidth = img.width;
-        let scaledHeight = img.height;
-
-        if (scaledWidth > MAX_DIMENSION || scaledHeight > MAX_DIMENSION) {
-          const scale = MAX_DIMENSION / Math.max(scaledWidth, scaledHeight);
-          scaledWidth *= scale;
-          scaledHeight *= scale;
+        // Calculate thumbnail dimensions maintaining aspect ratio
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > MAX_THUMB_SIZE) {
+            height = height * (MAX_THUMB_SIZE / width);
+            width = MAX_THUMB_SIZE;
+          }
+        } else {
+          if (height > MAX_THUMB_SIZE) {
+            width = width * (MAX_THUMB_SIZE / height);
+            height = MAX_THUMB_SIZE;
+          }
         }
 
-        // Then scale to thumbnail size
-        const scale = Math.min(MAX_SIZE / scaledWidth, MAX_SIZE / scaledHeight);
-        canvas.width = scaledWidth * scale;
-        canvas.height = scaledHeight * scale;
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
 
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve([
+          canvas.toDataURL("image/png", 0.7),
+          { width: img.width, height: img.height },
+        ]);
+      } catch (err) {
+        reject(err);
+      } finally {
         URL.revokeObjectURL(url);
-
-        const thumbnail = canvas.toDataURL("image/jpeg", 0.7);
-        console.log("Thumbnail created successfully");
-
-        resolve([thumbnail, { width: img.width, height: img.height }]);
-      } catch (error) {
-        console.error("Error creating thumbnail:", error);
-        reject(error);
       }
     };
-
-    img.onerror = (error) => {
-      console.error("Error loading image:", error);
-      URL.revokeObjectURL(url);
-      reject(error);
-    };
-
+    img.onerror = reject;
     img.src = url;
   });
+};
+
+export const saveMedia = async (file: File) => {
+  // Create a promise to handle file reading
+  const fileReader = new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  // Generate thumbnail and get file data
+  const [thumbnail, dimensions] = await createThumbnailFromFile(file);
+  const fileData = await fileReader;
+
+  // Create media item
+  const mediaItem: MediaItem = {
+    id: `media-${Date.now()}`,
+    name: file.name,
+    url: fileData,
+    thumbnail,
+    type: file.type,
+    dateAdded: new Date(),
+    width: dimensions.width,
+    height: dimensions.height,
+    size: file.size,
+  };
+
+  return await saveMediaItem(mediaItem);
+};
+
+export const getRecentMedia = async (): Promise<MediaItem[]> => {
+  const db = await openMediaDB();
+  const items = await db.getAll(STORE_NAME);
+  return items.sort((a, b) => b.dateAdded.getTime() - a.dateAdded.getTime());
+};
+
+export const deleteMediaItem = async (id: string) => {
+  const db = await openMediaDB();
+  await db.delete(STORE_NAME, id);
 };

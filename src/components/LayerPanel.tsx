@@ -258,8 +258,6 @@ export const LayerPanel: React.FC<LayerPanelProps> = ({
     [setObjects]
   );
 
-  console.log(objects);
-
   return (
     <div className="layer-panel">
       <div className="panel-tabs">

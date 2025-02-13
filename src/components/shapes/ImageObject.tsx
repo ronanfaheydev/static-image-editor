@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { Image, Transformer } from "react-konva";
 import type Konva from "konva";
 import { ImageObject } from "../../types/editor";
@@ -10,6 +10,18 @@ interface ImageObjectProps {
   isSelected: boolean;
   onSelect: () => void;
   onChange: (changes: Partial<ImageObject>) => void;
+  onDragStart?: (
+    e: Konva.KonvaEventObject<DragEvent>,
+    object: ImageObject
+  ) => void;
+  onDragEnd?: (
+    e: Konva.KonvaEventObject<DragEvent>,
+    object: ImageObject
+  ) => void;
+  onDragMove?: (
+    e: Konva.KonvaEventObject<DragEvent>,
+    object: ImageObject
+  ) => void;
 }
 
 export const ImageObjectComponent: React.FC<ImageObjectProps> = ({
@@ -17,6 +29,9 @@ export const ImageObjectComponent: React.FC<ImageObjectProps> = ({
   isSelected,
   onSelect,
   onChange,
+  onDragStart,
+  onDragEnd,
+  onDragMove,
 }) => {
   const [image] = useImage(object.src);
   const shapeRef = useRef<Konva.Image>(null);
@@ -30,18 +45,43 @@ export const ImageObjectComponent: React.FC<ImageObjectProps> = ({
     }
   }, [isSelected]);
 
+  const objectRef = useRef<ImageObject>(object);
+
+  const handleDragStart = useCallback(
+    (e: Konva.KonvaEventObject<DragEvent>) => {
+      onDragStart?.(e, object);
+      objectRef.current = { ...object };
+    },
+    [onDragStart, object]
+  );
+
+  const handleDragMove = useCallback(
+    (e: Konva.KonvaEventObject<DragEvent>) => {
+      //update the position of the object
+      objectRef.current.position.x = e.target.x();
+      objectRef.current.position.y = e.target.y();
+
+      onDragMove?.(e, { ...objectRef.current });
+    },
+    [onDragMove]
+  );
+
   // Handle drag end
-  const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
-    onChange({
-      position: {
-        x: e.target.x(),
-        y: e.target.y(),
-      },
-    });
-  };
+  const handleDragEnd = useCallback(
+    (e: Konva.KonvaEventObject<DragEvent>) => {
+      onChange({
+        position: {
+          x: e.target.x(),
+          y: e.target.y(),
+        },
+      });
+      onDragEnd?.(e, objectRef.current);
+    },
+    [onChange, onDragEnd]
+  );
 
   // Handle transform end
-  const handleTransformEnd = () => {
+  const handleTransformEnd = useCallback(() => {
     if (!shapeRef.current) return;
     const node = shapeRef.current;
     const scaleX = node.scaleX();
@@ -62,7 +102,7 @@ export const ImageObjectComponent: React.FC<ImageObjectProps> = ({
       },
       rotation: node.rotation(),
     });
-  };
+  }, [onChange]);
 
   return (
     <>
@@ -78,6 +118,8 @@ export const ImageObjectComponent: React.FC<ImageObjectProps> = ({
         draggable
         onClick={onSelect}
         onTap={onSelect}
+        onDragStart={handleDragStart}
+        onDragMove={handleDragMove}
         onDragEnd={handleDragEnd}
         onTransformEnd={handleTransformEnd}
         globalCompositeOperation={

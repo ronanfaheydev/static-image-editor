@@ -85,3 +85,9 @@ export interface DialogState {
 
 // Add this type near other interfaces
 export type DialogKey = keyof DialogState;
+
+export interface DialogProps {
+  onClose: () => void;
+  stage?: Konva.Stage;
+  // ... other props
+}

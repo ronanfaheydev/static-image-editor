@@ -86,16 +86,16 @@ function App() {
     },
   ]);
 
-  // Helper to add object to group
-  const addObjectToGroup = useCallback(
-    (object: EditorObjectBase, groupId?: string) => {
-      setObjects((prev) => {
-        const newObjects = [...prev, { ...object, parentId: groupId || null }];
-        return newObjects;
-      });
-    },
-    [setObjects]
-  );
+  // Add this function before the return statement
+  const closeDialogByKey = useCallback((key: DialogKey) => {
+    setDialogs((prev) => ({
+      ...prev,
+      [key]: {
+        isOpen: false,
+        props: prev[key].props, // Preserve props
+      },
+    }));
+  }, []);
 
   // Add keyboard shortcuts
   useHotkeys("ctrl+z, cmd+z", (e) => {
@@ -190,12 +190,14 @@ function App() {
       if (file) {
         const reader = new FileReader();
         reader.onload = (event) => {
+          // Get the canvas center position
           const centerX =
             (containerWidth - currentFormat.width) / 2 +
             currentFormat.width / 2;
           const centerY =
             (containerHeight - currentFormat.height) / 2 +
             currentFormat.height / 2;
+
           const newImage: ImageObject = {
             id: `image-${Date.now()}`,
             type: "image",
@@ -205,25 +207,37 @@ function App() {
             rotation: 0,
             opacity: 1,
             visible: true,
-            name: "New Image",
+            name: file.name,
             zIndex: objects.length,
-            blendMode: "normal" as BlendMode,
-            parentId: "root",
+            blendMode: "normal",
+            parentId: null,
             children: [],
             isExpanded: true,
             isRoot: false,
           };
-          addObjectToGroup(newImage, "root");
+
+          setObjects((prev) => [...prev, newImage]);
+
+          // Select the new image immediately
+          setEditorState((prev) => ({
+            ...prev,
+            selectedIds: [newImage.id],
+          }));
+
+          // Close the media library dialog
+          closeDialogByKey("mediaLibrary");
         };
         reader.readAsDataURL(file);
       }
     },
     [
-      addObjectToGroup,
-      objects.length,
       containerWidth,
       containerHeight,
       currentFormat,
+      objects.length,
+      setObjects,
+      setEditorState,
+      closeDialogByKey,
     ]
   );
 
@@ -361,17 +375,6 @@ function App() {
     setEditorState((prev) => ({ ...prev, formatEditMode: mode }));
   }, []);
 
-  // Add this function before the return statement
-  const closeDialogByKey = useCallback((key: DialogKey) => {
-    setDialogs((prev) => ({
-      ...prev,
-      [key]: {
-        isOpen: false,
-        props: prev[key].props, // Preserve props
-      },
-    }));
-  }, []);
-
   // Update handleLoadProject to use it
   const handleLoadProject = useCallback(
     (project: Project) => {
@@ -452,14 +455,6 @@ function App() {
     }
   }, []);
 
-  // Add close dialog handler
-  const closeDialog = useCallback((dialogName: DialogKey) => {
-    setDialogs((prev) => ({
-      ...prev,
-      [dialogName]: { ...prev[dialogName], isOpen: false },
-    }));
-  }, []);
-
   const handleMediaLibrarySelect = useCallback(
     (mediaItem: MediaItem) => {
       const centerX =
@@ -467,12 +462,21 @@ function App() {
       const centerY =
         (containerHeight - currentFormat.height) / 2 + currentFormat.height / 2;
 
+      const scaleSize = (format: Format, width: number, height: number) => {
+        const w = Math.max(width, format.width);
+        const h = w * (height / width);
+        return {
+          width: w,
+          height: h,
+        };
+      };
+
       const newImage: ImageObject = {
         id: `image-${Date.now()}`,
         type: "image",
         src: mediaItem.url,
-        position: { x: centerX - 100, y: centerY - 100 },
-        size: { width: 200, height: 200 },
+        position: { x: centerX + 100, y: centerY + 100 },
+        size: scaleSize(currentFormat, mediaItem.width, mediaItem.height),
         rotation: 0,
         opacity: 1,
         visible: true,
@@ -486,14 +490,14 @@ function App() {
       };
 
       setObjects((prev) => [...prev, newImage]);
-      closeDialog("mediaLibrary");
+      closeDialogByKey("mediaLibrary");
     },
     [
       containerWidth,
       containerHeight,
       currentFormat,
       objects.length,
-      closeDialog,
+      closeDialogByKey,
       setObjects,
     ]
   );
@@ -706,6 +710,31 @@ function App() {
     [setObjects]
   );
 
+  // Add to the Canvas component props
+  const handleAddObject = useCallback(
+    (object: EditorObjectBase) => {
+      setObjects((prev) => [...prev, object]);
+      setEditorState((prev) => ({
+        ...prev,
+        selectedIds: [object.id],
+      }));
+    },
+    [setObjects, setEditorState]
+  );
+
+  // Add the event listener in the Canvas component
+  useEffect(() => {
+    if (stageRef.current) {
+      const stage = stageRef.current;
+      stage.on("addObject", (e) => {
+        handleAddObject(e.object);
+      });
+      return () => {
+        stage.off("addObject");
+      };
+    }
+  }, [stageRef, handleAddObject]);
+
   return (
     <div
       className="editor-container"
@@ -765,6 +794,7 @@ function App() {
           handleDragStart={handleDragStart}
           handleDragEnd={handleDragEnd}
           handleDragMove={handleDragMove}
+          handleAddObject={handleAddObject}
         />
       </div>
 
@@ -777,13 +807,18 @@ function App() {
             console.log("Setting editor state to:", newState);
             setEditorState(newState);
           }, [])}
+          getCanvasSize={() => ({
+            width: containerWidth,
+            height: containerHeight,
+          })}
         />
         <ResizeHandle side="left" onResize={handleRightPanelResize} />
       </div>
       <DialogManager
         dialogs={dialogs}
-        closeDialog={closeDialog}
+        closeDialog={closeDialogByKey}
         openDialog={openDialog}
+        stage={stageRef.current}
       />
     </div>
   );

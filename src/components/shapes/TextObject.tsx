@@ -1,7 +1,7 @@
 import { Text, Transformer } from "react-konva";
 import type Konva from "konva";
 import { TextObject } from "../../types/editor";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import "./TextObject.scss";
 
 interface BoundBox {
@@ -16,6 +16,14 @@ interface TextObjectProps {
   isSelected: boolean;
   onSelect: () => void;
   onChange: (newProps: Partial<TextObject>) => void;
+  onDragStart?: (
+    e: Konva.KonvaEventObject<DragEvent>,
+    object: TextObject
+  ) => void;
+  onDragEnd?: (
+    e: Konva.KonvaEventObject<DragEvent>,
+    object: TextObject
+  ) => void;
 }
 
 export const TextObjectComponent = ({
@@ -23,6 +31,8 @@ export const TextObjectComponent = ({
   isSelected,
   onSelect,
   onChange,
+  onDragStart,
+  onDragEnd,
 }: TextObjectProps) => {
   const textRef = useRef<Konva.Text>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
@@ -33,6 +43,26 @@ export const TextObjectComponent = ({
       transformerRef.current.getLayer()?.batchDraw();
     }
   }, [isSelected]);
+
+  const handleDragStart = useCallback(
+    (e: Konva.KonvaEventObject<DragEvent>) => {
+      onDragStart?.(e, object);
+    },
+    [onDragStart, object]
+  );
+
+  const handleDragEnd = useCallback(
+    (e: Konva.KonvaEventObject<DragEvent>) => {
+      onDragEnd?.(e, object);
+      onChange({
+        position: {
+          x: e.target.x(),
+          y: e.target.y(),
+        },
+      });
+    },
+    [onChange, onDragEnd, object]
+  );
 
   return (
     <>
@@ -92,14 +122,8 @@ export const TextObjectComponent = ({
             stageContainer.removeChild(textarea);
           });
         }}
-        onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
-          onChange({
-            position: {
-              x: e.target.x(),
-              y: e.target.y(),
-            },
-          });
-        }}
+        onDragEnd={handleDragEnd}
+        onDragStart={handleDragStart}
         onTransformEnd={() => {
           const node = textRef.current;
           if (!node) return;

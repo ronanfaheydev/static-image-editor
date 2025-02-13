@@ -1,6 +1,10 @@
 import React, { useState, useCallback, useEffect } from "react";
 import { MediaItem } from "../../types/media";
-import { saveMedia, getRecentMedia } from "../../utils/mediaLibrary";
+import {
+  saveMedia,
+  getRecentMedia,
+  deleteMediaItem,
+} from "../../utils/mediaLibrary";
 import "./MediaLibraryDialog.scss";
 
 interface MediaLibraryDialogProps {
@@ -23,6 +27,11 @@ export const MediaLibraryDialog: React.FC<MediaLibraryDialogProps> = ({
     setRecentMedia(items);
   }, []);
 
+  const handleDelete = async (id: string) => {
+    await deleteMediaItem(id);
+    await loadRecentMedia();
+  };
+
   useEffect(() => {
     if (isOpen) {
       loadRecentMedia();
@@ -38,21 +47,22 @@ export const MediaLibraryDialog: React.FC<MediaLibraryDialogProps> = ({
         file.type.startsWith("image/")
       );
 
+      const items: MediaItem[] = [];
       for (const file of files) {
-        await saveMedia(file);
+        items.push(await saveMedia(file));
       }
+      onSelect(items[0]);
+      setRecentMedia(items);
       loadRecentMedia();
     },
-    [loadRecentMedia]
+    [loadRecentMedia, onSelect]
   );
 
   const handleFileSelect = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(e.target.files || []);
       for (const file of files) {
-        console.log(file);
         await saveMedia(file).catch((e) => console.error(e));
-        console.log("saved");
       }
       loadRecentMedia();
     },
@@ -103,6 +113,16 @@ export const MediaLibraryDialog: React.FC<MediaLibraryDialogProps> = ({
                 onClick={() => onSelect(item)}
               >
                 <img src={item.thumbnail} alt={item.name} />
+
+                <button
+                  className="delete-button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDelete(item.id);
+                  }}
+                >
+                  ×
+                </button>
               </div>
             ))}
           </div>

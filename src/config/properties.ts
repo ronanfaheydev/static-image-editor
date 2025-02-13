@@ -7,7 +7,9 @@ export type PropertyType =
   | "select"
   | "range"
   | "position"
-  | "size";
+  | "size"
+  | "resize"
+  | "alignment";
 
 export interface PropertyConfig {
   id: string;
@@ -238,6 +240,18 @@ export const OBJECT_PROPERTIES: Record<string, PropertyConfig[]> = {
       type: "color",
       group: "border",
     },
+    {
+      id: "resize",
+      label: "Resize Options",
+      type: "resize",
+      group: "position",
+    },
+    {
+      id: "alignment",
+      label: "Alignment",
+      type: "alignment",
+      group: "position",
+    },
   ],
   text: [
     {
@@ -316,6 +330,12 @@ export const OBJECT_PROPERTIES: Record<string, PropertyConfig[]> = {
       options: BLEND_MODES,
       group: "appearance",
     },
+    {
+      id: "alignment",
+      label: "Alignment",
+      type: "alignment",
+      group: "position",
+    },
   ],
   shape: [
     {
@@ -382,6 +402,12 @@ export const OBJECT_PROPERTIES: Record<string, PropertyConfig[]> = {
       type: "select",
       options: BLEND_MODES,
       group: "appearance",
+    },
+    {
+      id: "alignment",
+      label: "Alignment",
+      type: "alignment",
+      group: "position",
     },
   ],
 };
