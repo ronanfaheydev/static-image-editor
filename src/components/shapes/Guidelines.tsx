@@ -18,6 +18,7 @@ export const Guidelines: React.FC<GuidelinesProps> = ({
   const guidelines: Array<{
     points: number[];
     key: string;
+    isSnapping: boolean;
   }> = [];
 
   // Get center points of dragged object
@@ -35,13 +36,12 @@ export const Guidelines: React.FC<GuidelinesProps> = ({
     const targetCenterX = obj.position.x + obj.size.width / 2;
     const targetCenterY = obj.position.y + obj.size.height / 2;
 
-    console.log(targetCenterX, targetCenterY);
-
-    // Vertical center alignment
+    // Show guidelines when within show threshold
     if (Math.abs(draggedCenterX - targetCenterX) < snapThreshold) {
       guidelines.push({
         points: [targetCenterX, 0, targetCenterX, window.innerHeight],
         key: `v-${obj.id}`,
+        isSnapping: Math.abs(draggedCenterX - targetCenterX) < 1, // Show different style when actually snapped
       });
     }
 
@@ -50,11 +50,10 @@ export const Guidelines: React.FC<GuidelinesProps> = ({
       guidelines.push({
         points: [0, targetCenterY, window.innerWidth, targetCenterY],
         key: `h-${obj.id}`,
+        isSnapping: Math.abs(draggedCenterY - targetCenterY) < 1,
       });
     }
   });
-
-  console.log(guidelines);
 
   return (
     <>
@@ -62,8 +61,8 @@ export const Guidelines: React.FC<GuidelinesProps> = ({
         <Line
           key={line.key}
           points={line.points}
-          stroke="#00ff00"
-          strokeWidth={1}
+          stroke={line.isSnapping ? "#ff0000" : "#000000"}
+          strokeWidth={line.isSnapping ? 2 : 1}
           dash={[4, 4]}
         />
       ))}

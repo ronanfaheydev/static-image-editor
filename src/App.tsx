@@ -61,6 +61,7 @@ function App() {
     redo,
     canUndo,
     canRedo,
+    lastModified,
   } = useHistory<EditorObjectBase[]>([
     {
       id: "canvas-background",
@@ -74,7 +75,7 @@ function App() {
       isRoot: true,
       position: {
         x: Math.max(10, (containerWidth - currentFormat.width) / 2),
-        y: Math.max(10, (containerHeight - currentFormat.height) / 2),
+        y: Math.max(10, (containerHeight - currentFormat.height) / 2) + 20, // 20 for the title text
       },
       size: currentFormat,
       rotation: 0,
@@ -608,7 +609,7 @@ function App() {
 
       // Calculate the centered position with minimum padding
       const centerX = Math.max(10, (containerWidth - format.width) / 2);
-      const centerY = Math.max(10, (containerHeight - format.height) / 2);
+      const centerY = Math.max(10, (containerHeight - format.height) / 2) + 20; // 20 for the title text
 
       // Update root group and background layer positions
       setObjects((prev) =>
@@ -757,6 +758,7 @@ function App() {
         handleCustomFormatAdd={handleCustomFormatAdd}
         handleFormatEditModeChange={handleFormatEditModeChange}
         openDialog={openDialog}
+        lastModified={lastModified}
       />
 
       <div className="panel left-panel" style={{ width: leftPanelWidth }}>
@@ -804,13 +806,13 @@ function App() {
           onChange={handleObjectChange}
           editorState={editorState}
           setEditorState={useCallback((newState: EditorState) => {
-            console.log("Setting editor state to:", newState);
             setEditorState(newState);
           }, [])}
           getCanvasSize={() => ({
             width: containerWidth,
             height: containerHeight,
           })}
+          objects={objects}
         />
         <ResizeHandle side="left" onResize={handleRightPanelResize} />
       </div>

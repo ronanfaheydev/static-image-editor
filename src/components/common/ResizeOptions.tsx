@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useCallback } from "react";
 import { EditorObjectBase } from "../../types/editor";
 import "./ResizeOptions.scss";
 
@@ -20,7 +20,8 @@ export const ResizeOptions: React.FC<ResizeOptionsProps> = ({
   onResize,
   onCrop,
 }) => {
-  const handleFill = () => {
+  const handleFill = useCallback(() => {
+    console.log(object.size, canvasSize);
     const scale = Math.max(
       canvasSize.width / object.size.width,
       canvasSize.height / object.size.height
@@ -31,20 +32,20 @@ export const ResizeOptions: React.FC<ResizeOptionsProps> = ({
     const y = (canvasSize.height - newHeight) / 2;
 
     onResize({ width: newWidth, height: newHeight, x, y });
-  };
+  }, [onResize, object, canvasSize]);
 
-  const handleFit = () => {
+  const handleFit = useCallback(() => {
     const scale = Math.min(
       canvasSize.width / object.size.width,
       canvasSize.height / object.size.height
     );
     const newWidth = object.size.width * scale;
     const newHeight = object.size.height * scale;
-    const x = (canvasSize.width - newWidth) / 2;
-    const y = (canvasSize.height - newHeight) / 2;
+    const x = 0;
+    const y = 0;
 
     onResize({ width: newWidth, height: newHeight, x, y });
-  };
+  }, [onResize, object, canvasSize]);
 
   return (
     <div className="resize-options">

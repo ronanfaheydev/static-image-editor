@@ -54,12 +54,15 @@ export const TextObjectComponent = ({
   const handleDragEnd = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
       onDragEnd?.(e, object);
-      onChange({
-        position: {
-          x: e.target.x(),
-          y: e.target.y(),
+      onChange(
+        {
+          position: {
+            x: e.target.x(),
+            y: e.target.y(),
+          },
         },
-      });
+        true // isDropping = true
+      );
     },
     [onChange, onDragEnd, object]
   );

@@ -129,9 +129,18 @@ export const ShapeObjectComponent = ({
 
   const handleDragEnd = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
+      onChange(
+        {
+          position: {
+            x: e.target.x(),
+            y: e.target.y(),
+          },
+        },
+        true // isDropping = true
+      );
       onDragEnd?.(e, object);
     },
-    [onDragEnd, object]
+    [onChange, onDragEnd, object]
   );
 
   return (
@@ -160,7 +169,9 @@ export const ShapeObjectComponent = ({
           onClick={onSelect}
           onTap={onSelect}
           blendMode={object.blendMode}
-          globalCompositeOperation={object.blendMode}
+          globalCompositeOperation={
+            object.blendMode as Konva.globalCompositeOperationType
+          }
           onDragEnd={handleDragEnd}
           onDragStart={handleDragStart}
           onTransformEnd={() => {

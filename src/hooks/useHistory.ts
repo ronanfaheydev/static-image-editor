@@ -12,6 +12,7 @@ export function useHistory<T>(initialPresent: T) {
     present: initialPresent,
     future: [],
   });
+  const [lastModified, setLastModified] = useState<Date>(new Date());
 
   const canUndo = state.past.length > 0;
   const canRedo = state.future.length > 0;
@@ -48,6 +49,7 @@ export function useHistory<T>(initialPresent: T) {
 
   const updatePresent = useCallback(
     (newPresent: T | ((currentPresent: T) => T)) => {
+      setLastModified(new Date());
       setState((currentState) => {
         const updatedPresent =
           typeof newPresent === "function"
@@ -72,5 +74,6 @@ export function useHistory<T>(initialPresent: T) {
     canUndo,
     canRedo,
     history: state,
+    lastModified,
   };
 }

@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useState, useCallback } from "react";
-import { Stage, Layer, Rect, Group } from "react-konva";
+import { Stage, Layer, Rect, Group, Text } from "react-konva";
 import {
   EditorState,
   EditorObjectBase,
@@ -15,11 +15,13 @@ import { useContainerSize } from "../hooks/useContainerSize";
 import "./Canvas.scss";
 import type Konva from "konva";
 import { Guidelines } from "./shapes/Guidelines";
+import { Format } from "../types/format";
 
 interface CanvasProps {
   editorState: EditorState;
   stageRef: React.RefObject<Konva.Stage>;
   objects: EditorObjectBase[];
+  currentFormat: Format;
   stagePosition: { x: number; y: number };
   handleSelect: (id: string | null) => void;
   handleObjectChange: (id: string, changes: Partial<EditorObjectBase>) => void;
@@ -34,6 +36,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   stageRef,
   objects,
   stagePosition,
+  currentFormat,
   handleSelect,
   handleObjectChange,
   handleWheel,
@@ -79,15 +82,15 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   const _handleObjectChange = useCallback(
     (id: string, changes: Partial<EditorObjectBase>) => {
-      if (changes.position) {
-        const object = objects.find((obj) => obj.id === id);
-        if (object) {
-          changes.position = snapToObjects(object, changes.position);
-        }
-      }
+      // if (changes.position) {
+      //   const object = objects.find((obj) => obj.id === id);
+      //   if (object) {
+      //     changes.position = snapToObjects(object, changes.position);
+      //   }
+      // }
       handleObjectChange(id, changes);
     },
-    [handleObjectChange, snapToObjects, objects]
+    [handleObjectChange, objects]
   );
 
   // Handle clicking on stage background or format rect
@@ -224,16 +227,30 @@ export const Canvas: React.FC<CanvasProps> = ({
         >
           <Layer>
             {root && (
-              <Rect
-                x={root.position.x}
-                y={root.position.y}
-                width={root.size.width}
-                height={root.size.height}
-                fill={root.fill}
-                opacity={root.opacity}
-                stroke={root.stroke}
-                strokeWidth={root.strokeWidth}
-              />
+              <>
+                <Text
+                  x={root.position.x}
+                  y={root.position.y - 24}
+                  text={`${currentFormat.name} ${currentFormat.aspectRatio} (${currentFormat.width}x${currentFormat.height}px)`}
+                  fontSize={20}
+                  fontFamily="Arial"
+                />
+                <Rect
+                  x={root.position.x}
+                  y={root.position.y}
+                  width={root.size.width}
+                  height={root.size.height}
+                  fill={root.fill}
+                  opacity={root.opacity}
+                  stroke={root.stroke}
+                  strokeWidth={root.strokeWidth}
+                  name={root.name}
+                  id={root.id}
+                  type={root.type}
+                  parentId={root.parentId}
+                  visible={root.visible}
+                />
+              </>
             )}
             {objectsToRender.map((obj) => {
               if (obj.children.length > 0) {
