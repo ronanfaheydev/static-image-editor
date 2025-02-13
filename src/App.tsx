@@ -72,7 +72,7 @@ function App() {
       children: [],
       isExpanded: true,
       isRoot: true,
-      position: { x: 10, y: 10 },
+      position: { x: 10, y: containerHeight / 2 },
       size: currentFormat,
       rotation: 0,
       opacity: editorState.backgroundOpacity,
@@ -143,7 +143,7 @@ function App() {
             Partial<EditorObjectBase>
           >((acc, prop) => {
             if (prop in newProps) {
-              acc[prop] = newProps[prop];
+              acc[prop] = newProps[prop] as any;
             }
             return acc;
           }, {});
@@ -151,7 +151,7 @@ function App() {
           const styleChanges = nonPositionProps.reduce<
             Partial<EditorObjectBase>
           >((acc, prop) => {
-            acc[prop] = newProps[prop];
+            acc[prop] = newProps[prop] as any;
             return acc;
           }, {});
 
@@ -248,6 +248,8 @@ function App() {
       blendMode: "normal" as BlendMode,
       parentId: null,
       children: [],
+      isExpanded: true,
+      isRoot: false,
     };
     setObjects((prev) => [...prev, newText]);
   }, [
@@ -395,7 +397,7 @@ function App() {
 
   // Add state for canvas position
   const [stagePosition, setStagePosition] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
+  const [, setIsDragging] = useState(false);
 
   // Wrap handleWheel
   const handleWheel = useCallback(
@@ -529,7 +531,7 @@ function App() {
           currentFormat,
           customFormats,
           lastModified: new Date(),
-        },
+        } as Project,
       },
     },
     templateBrowser: {
@@ -562,7 +564,7 @@ function App() {
         [dialogName]: {
           isOpen: true,
           props: {
-            ...prev[dialogName].props,
+            ...prev[dialogName as DialogKey].props,
             stage: stageRef.current,
             currentFormat,
             customFormats,
@@ -579,9 +581,11 @@ function App() {
     (format: Format) => {
       if (!containerWidth || !containerHeight) return 0.8; // default zoom
 
-      const padding = 40; // padding around the format
-      const horizontalZoom = (containerWidth - padding) / format.width;
-      const verticalZoom = (containerHeight - padding) / format.height;
+      const horizontalPadding = 20; // 10px on each side
+      const verticalPadding = 40; // some padding for top and bottom
+      const horizontalZoom =
+        (containerWidth - horizontalPadding) / format.width;
+      const verticalZoom = (containerHeight - verticalPadding) / format.height;
 
       return Math.min(horizontalZoom, verticalZoom, 2); // cap at 2x zoom
     },
@@ -597,6 +601,10 @@ function App() {
         zoom: calculateFitZoom(format),
       }));
 
+      // Calculate the centered position
+      const centerX = 10; // 10px from left
+      const centerY = containerHeight / 2; // Halfway down
+
       // Update root group and background layer sizes
       setObjects((prev) =>
         prev.map((obj) => {
@@ -604,14 +612,14 @@ function App() {
             return {
               ...obj,
               size: format,
-              position: { x: 10, y: 10 }, // Reset position to ensure proper centering
+              position: { x: centerX, y: centerY },
             };
           }
           return obj;
         })
       );
     },
-    [calculateFitZoom, setObjects]
+    [calculateFitZoom, setObjects, containerHeight]
   );
 
   // Handle custom format add

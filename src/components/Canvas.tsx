@@ -6,6 +6,7 @@ import {
   ImageObject,
   TextObject,
   ShapeObject,
+  GroupObject,
 } from "../types/editor";
 import { ImageObjectComponent } from "./shapes/ImageObject";
 import { TextObjectComponent } from "./shapes/TextObject";
@@ -15,6 +16,7 @@ import { Format } from "../types/format";
 import { useContainerSize } from "../hooks/useContainerSize";
 import "./Canvas.scss";
 import type Konva from "konva";
+
 interface CanvasProps {
   editorState: EditorState;
   stageRef: React.RefObject<Konva.Stage>;

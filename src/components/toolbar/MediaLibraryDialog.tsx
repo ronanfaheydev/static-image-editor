@@ -50,7 +50,9 @@ export const MediaLibraryDialog: React.FC<MediaLibraryDialogProps> = ({
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const files = Array.from(e.target.files || []);
       for (const file of files) {
-        await saveMedia(file);
+        console.log(file);
+        await saveMedia(file).catch((e) => console.error(e));
+        console.log("saved");
       }
       loadRecentMedia();
     },

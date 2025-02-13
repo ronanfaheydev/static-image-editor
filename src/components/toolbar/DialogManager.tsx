@@ -64,7 +64,7 @@ export const DialogManager: React.FC<DialogManagerProps> = ({
     />
     <LoadDialog
       isOpen={dialogs.load.isOpen}
-      onClose={() => closeDialog("loadTemplate")}
+      onClose={() => closeDialog("load")}
       openDialog={openDialog}
       {...dialogs.load.props}
     />

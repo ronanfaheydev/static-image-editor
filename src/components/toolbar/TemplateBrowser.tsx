@@ -80,11 +80,11 @@ export const TemplateBrowser: React.FC<TemplateBrowserProps> = ({
                 <button
                   onClick={() => {
                     onClose();
-                    openDialog("loadTemplate");
+                    openDialog("load");
                   }}
                   className="action-button"
                 >
-                  Load template
+                  Load file
                 </button>
               </div>
               <input

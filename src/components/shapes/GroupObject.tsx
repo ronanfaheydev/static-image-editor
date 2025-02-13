@@ -1,36 +1,33 @@
-import React, { useEffect, useRef } from "react";
-import { Image, Transformer } from "react-konva";
+import React, { useRef, useEffect } from "react";
+import { Group, Transformer } from "react-konva";
 import type Konva from "konva";
-import { ImageObject } from "../../types/editor";
-import useImage from "use-image";
-import "./ImageObject.scss";
+import { GroupObject } from "../../types/editor";
 
-interface ImageObjectProps {
-  object: ImageObject;
+interface GroupObjectProps {
+  object: GroupObject;
   isSelected: boolean;
   onSelect: () => void;
-  onChange: (changes: Partial<ImageObject>) => void;
+  onChange: (changes: Partial<GroupObject>) => void;
+  children: React.ReactNode;
 }
 
-export const ImageObjectComponent: React.FC<ImageObjectProps> = ({
+export const GroupObjectComponent: React.FC<GroupObjectProps> = ({
   object,
   isSelected,
   onSelect,
   onChange,
+  children,
 }) => {
-  const [image] = useImage(object.src);
-  const shapeRef = useRef<Konva.Image>(null);
+  const groupRef = useRef<Konva.Group>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
 
-  // Update transformer on selection change
   useEffect(() => {
-    if (isSelected && transformerRef.current && shapeRef.current) {
-      transformerRef.current.nodes([shapeRef.current]);
+    if (isSelected && transformerRef.current && groupRef.current) {
+      transformerRef.current.nodes([groupRef.current]);
       transformerRef.current.getLayer()?.batchDraw();
     }
   }, [isSelected]);
 
-  // Handle drag end
   const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
     onChange({
       position: {
@@ -40,10 +37,10 @@ export const ImageObjectComponent: React.FC<ImageObjectProps> = ({
     });
   };
 
-  // Handle transform end
   const handleTransformEnd = () => {
-    if (!shapeRef.current) return;
-    const node = shapeRef.current;
+    if (!groupRef.current) return;
+    const node = groupRef.current;
+
     const scaleX = node.scaleX();
     const scaleY = node.scaleY();
 
@@ -57,8 +54,8 @@ export const ImageObjectComponent: React.FC<ImageObjectProps> = ({
         y: node.y(),
       },
       size: {
-        width: node.width() * scaleX,
-        height: node.height() * scaleY,
+        width: Math.max(5, node.width() * scaleX),
+        height: Math.max(5, node.height() * scaleY),
       },
       rotation: node.rotation(),
     });
@@ -66,9 +63,8 @@ export const ImageObjectComponent: React.FC<ImageObjectProps> = ({
 
   return (
     <>
-      <Image
-        ref={shapeRef}
-        image={image}
+      <Group
+        ref={groupRef}
         x={object.position.x}
         y={object.position.y}
         width={object.size.width}
@@ -80,26 +76,16 @@ export const ImageObjectComponent: React.FC<ImageObjectProps> = ({
         onTap={onSelect}
         onDragEnd={handleDragEnd}
         onTransformEnd={handleTransformEnd}
-        globalCompositeOperation={
-          object.blendMode as Konva.globalCompositeOperationType
-        }
-        cornerRadius={object.borderRadius || 0}
-        stroke={object.borderColor}
-        strokeWidth={object.borderWidth || 0}
-      />
+      >
+        {children}
+      </Group>
       {isSelected && (
         <Transformer
           ref={transformerRef}
           boundBoxFunc={(oldBox, newBox) => {
             // Limit resize
             const minSize = 5;
-            const maxSize = 1000;
-            if (
-              newBox.width < minSize ||
-              newBox.height < minSize ||
-              newBox.width > maxSize ||
-              newBox.height > maxSize
-            ) {
+            if (newBox.width < minSize || newBox.height < minSize) {
               return oldBox;
             }
             return newBox;

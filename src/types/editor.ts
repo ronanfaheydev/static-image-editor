@@ -37,8 +37,11 @@ export interface EditorObjectBase {
   blendMode: BlendMode;
   parentId: string | null;
   children: EditorObjectBase[];
-  isExpanded: boolean;
-  isRoot: boolean;
+  isExpanded?: boolean;
+  isRoot?: boolean;
+  fill?: string;
+  stroke?: string;
+  strokeWidth?: number;
 }
 
 export interface ImageObject extends EditorObjectBase {
@@ -90,6 +93,12 @@ export interface GroupObject {
   zIndex: number;
   children: EditorObjectBase[];
   isExpanded?: boolean;
+  position: Position;
+  size: Size;
+  rotation: number;
+  opacity: number;
+  blendMode: BlendMode;
+  parentId: string | null;
 }
 
 export type EditorObject = ImageObject | TextObject | ShapeObject | GroupObject;

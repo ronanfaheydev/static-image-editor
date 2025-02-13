@@ -62,18 +62,10 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         <button>
           <Select />
         </button>
-        <div className="dropdown">
-          <button className="dropdown-trigger">
-            <span className="icon">
-              <Image />
-            </span>
-          </button>
-          <div className="dropdown-content">
-            <button onClick={() => openDialog("mediaLibrary")}>
-              <Image />
-            </button>
-          </div>
-        </div>
+
+        <button onClick={() => openDialog("mediaLibrary")}>
+          <Image />
+        </button>
 
         <div className="dropdown">
           <button className="dropdown-trigger">

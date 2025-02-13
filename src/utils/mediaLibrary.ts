@@ -14,6 +14,7 @@ export const mediaDB = () =>
 export const saveMedia = async (file: File): Promise<MediaItem> => {
   const db = await mediaDB();
 
+  debugger;
   // Create thumbnail and get image dimensions
   const [thumbnail, dimensions] = await createThumbnail(file);
 
@@ -26,7 +27,10 @@ export const saveMedia = async (file: File): Promise<MediaItem> => {
     size: dimensions,
   };
 
+  debugger;
   await db.put(STORE_NAME, item);
+
+  debugger;
   return item;
 };
 
@@ -41,24 +45,59 @@ export const getRecentMedia = async (limit = 10): Promise<MediaItem[]> => {
 const createThumbnail = (
   file: File
 ): Promise<[string, { width: number; height: number }]> => {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    console.log("Creating thumbnail for:", file.name, "size:", file.size);
+
+    // Remove crossOrigin for local files
+    // img.crossOrigin = "anonymous";
+
     img.onload = () => {
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d")!;
+      try {
+        console.log("Image loaded:", img.width, "x", img.height);
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d")!;
 
-      const MAX_SIZE = 100;
-      const scale = Math.min(MAX_SIZE / img.width, MAX_SIZE / img.height);
+        // Handle large images by scaling down more
+        const MAX_SIZE = 100;
+        const MAX_DIMENSION = 4096; // Max texture size most browsers support
 
-      canvas.width = img.width * scale;
-      canvas.height = img.height * scale;
+        // First scale down if image is too large
+        let scaledWidth = img.width;
+        let scaledHeight = img.height;
 
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      resolve([
-        canvas.toDataURL("image/jpeg", 0.7),
-        { width: img.width, height: img.height },
-      ]);
+        if (scaledWidth > MAX_DIMENSION || scaledHeight > MAX_DIMENSION) {
+          const scale = MAX_DIMENSION / Math.max(scaledWidth, scaledHeight);
+          scaledWidth *= scale;
+          scaledHeight *= scale;
+        }
+
+        // Then scale to thumbnail size
+        const scale = Math.min(MAX_SIZE / scaledWidth, MAX_SIZE / scaledHeight);
+        canvas.width = scaledWidth * scale;
+        canvas.height = scaledHeight * scale;
+
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        URL.revokeObjectURL(url);
+
+        const thumbnail = canvas.toDataURL("image/jpeg", 0.7);
+        console.log("Thumbnail created successfully");
+
+        resolve([thumbnail, { width: img.width, height: img.height }]);
+      } catch (error) {
+        console.error("Error creating thumbnail:", error);
+        reject(error);
+      }
     };
-    img.src = URL.createObjectURL(file);
+
+    img.onerror = (error) => {
+      console.error("Error loading image:", error);
+      URL.revokeObjectURL(url);
+      reject(error);
+    };
+
+    img.src = url;
   });
 };

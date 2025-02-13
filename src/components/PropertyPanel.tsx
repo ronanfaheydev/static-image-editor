@@ -7,6 +7,13 @@ import {
   EditorState,
 } from "../types/editor";
 import "./PropertyPanel.scss";
+import { Accordion } from "./common/Accordion";
+import {
+  PROPERTY_GROUPS,
+  OBJECT_PROPERTIES,
+  getPropertyValue,
+  setPropertyValue,
+} from "../config/properties";
 
 interface PropertyPanelProps {
   selectedObject: EditorObjectBase | null;
@@ -316,6 +323,118 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
     );
   };
 
+  const renderImageProperties = () => {
+    if (selectedObject?.type !== "image") return null;
+
+    return (
+      <div className="property-section">
+        {renderObjectProperties(selectedObject, onChange)}
+        <Accordion title="Preview">
+          <div className="preview-container">
+            <img
+              src={selectedObject.src}
+              alt="Preview"
+              style={{
+                maxWidth: "100%",
+                borderRadius: selectedObject.borderRadius || 0,
+                border: selectedObject.borderWidth
+                  ? `${selectedObject.borderWidth}px solid ${
+                      selectedObject.borderColor || "#000"
+                    }`
+                  : "none",
+              }}
+            />
+          </div>
+        </Accordion>
+      </div>
+    );
+  };
+
+  const renderPropertyInput = (
+    config: PropertyConfig,
+    value: any,
+    onChange: (value: any) => void
+  ) => {
+    switch (config.type) {
+      case "number":
+        return (
+          <input
+            type="number"
+            value={value}
+            min={config.min}
+            max={config.max}
+            step={config.step}
+            onChange={(e) => onChange(Number(e.target.value))}
+          />
+        );
+      case "range":
+        return (
+          <input
+            type="range"
+            value={value}
+            min={config.min}
+            max={config.max}
+            step={config.step}
+            onChange={(e) => onChange(Number(e.target.value))}
+          />
+        );
+      case "color":
+        return (
+          <input
+            type="color"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        );
+      case "select":
+        return (
+          <select value={value} onChange={(e) => onChange(e.target.value)}>
+            {config.options?.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const renderObjectProperties = (
+    object: EditorObjectBase,
+    onChange: (changes: Partial<EditorObjectBase>) => void
+  ) => {
+    const properties = OBJECT_PROPERTIES[object.type];
+    if (!properties) return null;
+
+    return PROPERTY_GROUPS.map((group) => {
+      const groupProperties = properties.filter((p) => p.group === group.id);
+      if (groupProperties.length === 0) return null;
+
+      return (
+        <Accordion
+          key={group.id}
+          title={group.title}
+          defaultOpen={group.defaultOpen}
+        >
+          <div className="property-grid">
+            {groupProperties.map((prop) => (
+              <div key={prop.id} className="property-row">
+                <label>{prop.label}</label>
+                {renderPropertyInput(
+                  prop,
+                  getPropertyValue(object, prop.id),
+                  (value) => onChange(setPropertyValue(object, prop.id, value))
+                )}
+              </div>
+            ))}
+          </div>
+        </Accordion>
+      );
+    });
+  };
+
   return (
     <div className="property-panel">
       <h3>Properties</h3>
@@ -323,9 +442,27 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
         <p className="no-selection">No object selected</p>
       ) : (
         <>
-          {renderCommonProperties()}
-          {selectedObject.type === "text" && renderTextProperties()}
-          {selectedObject.type === "shape" && renderShapeProperties()}
+          {renderObjectProperties(selectedObject, onChange)}
+
+          {selectedObject.type === "image" && (
+            <div className="property-section">
+              <div className="preview-container">
+                <img
+                  src={selectedObject.src}
+                  alt="Preview"
+                  style={{
+                    maxWidth: "100%",
+                    borderRadius: selectedObject.borderRadius || 0,
+                    border: selectedObject.borderWidth
+                      ? `${selectedObject.borderWidth}px solid ${
+                          selectedObject.borderColor || "#000"
+                        }`
+                      : "none",
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </>
       )}
       <div className="panel-resize-handle" />
