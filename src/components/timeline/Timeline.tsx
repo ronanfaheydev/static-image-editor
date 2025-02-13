@@ -58,6 +58,8 @@ export const TimelineComponent: React.FC<TimelineProps> = ({
       size: object.size,
       rotation: object.rotation,
       opacity: object.opacity,
+      fill: object.fill,
+      stroke: object.stroke,
     });
   }, [selectedObjectId, currentTime, objects, onKeyframeAdd]);
 
