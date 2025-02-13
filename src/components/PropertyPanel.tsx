@@ -90,17 +90,6 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
     );
   }
 
-  const handleNumberChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    property: keyof EditorObjectBase
-  ) => {
-    if (!selectedObject) return;
-    const value = parseFloat(e.target.value);
-    if (!isNaN(value)) {
-      onChange(selectedObject.id, { [property]: value });
-    }
-  };
-
   const renderPropertyInput = (
     config: PropertyConfig,
     value: any,

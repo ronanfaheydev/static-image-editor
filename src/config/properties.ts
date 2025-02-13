@@ -34,6 +34,142 @@ export const PROPERTY_GROUPS: PropertyGroupConfig[] = [
   { id: "border", title: "Border", defaultOpen: true },
 ];
 
+/*BLEND MORE PROPERTIES:
+
+"source-over"
+This is the default setting and draws new shapes on top of the existing canvas content.
+
+"source-in"
+The new shape is drawn only where both the new shape and the destination canvas overlap. Everything else is made transparent.
+
+"source-out"
+The new shape is drawn where it doesn't overlap the existing canvas content.
+
+"source-atop"
+The new shape is only drawn where it overlaps the existing canvas content.
+
+"destination-over"
+New shapes are drawn behind the existing canvas content.
+
+"destination-in"
+The existing canvas content is kept where both the new shape and existing canvas content overlap. Everything else is made transparent.
+
+"destination-out"
+The existing content is kept where it doesn't overlap the new shape.
+
+"destination-atop"
+The existing canvas is only kept where it overlaps the new shape. The new shape is drawn behind the canvas content.
+
+"lighter"
+Where both shapes overlap, the color is determined by adding color values.
+
+"copy"
+Only the new shape is shown.
+
+"xor"
+Shapes are made transparent where both overlap and drawn normal everywhere else.
+
+"multiply"
+The pixels of the top layer are multiplied with the corresponding pixels of the bottom layer. A darker picture is the result.
+
+"screen"
+The pixels are inverted, multiplied, and inverted again. A lighter picture is the result (opposite of multiply)
+
+"overlay"
+A combination of multiply and screen. Dark parts on the base layer become darker, and light parts become lighter.
+
+"darken"
+Retains the darkest pixels of both layers.
+
+"lighten"
+Retains the lightest pixels of both layers.
+
+"color-dodge"
+Divides the bottom layer by the inverted top layer.
+
+"color-burn"
+Divides the inverted bottom layer by the top layer, and then inverts the result.
+
+"hard-light"
+Like overlay, a combination of multiply and screen — but instead with the top layer and bottom layer swapped.
+
+"soft-light"
+A softer version of hard-light. Pure black or white does not result in pure black or white.
+
+"difference"
+Subtracts the bottom layer from the top layer — or the other way round — to always get a positive value.
+
+"exclusion"
+Like difference, but with lower contrast.
+
+"hue"
+Preserves the luma and chroma of the bottom layer, while adopting the hue of the top layer.
+
+"saturation"
+Preserves the luma and hue of the bottom layer, while adopting the chroma of the top layer.
+
+"color"
+Preserves the luma of the bottom layer, while adopting the hue and chroma of the top layer.
+
+"luminosity"
+Preserves the hue and chroma of the bottom layer, while adopting the luma of the top layer.
+
+*/
+
+export const BLEND_MODES = [
+  { value: "normal", label: "Normal" },
+  { value: "multiply", label: "Multiply" },
+  { value: "screen", label: "Screen" },
+  { value: "overlay", label: "Overlay" },
+  { value: "darken", label: "Darken" },
+  { value: "lighten", label: "Lighten" },
+  { value: "color-dodge", label: "Color Dodge" },
+  { value: "color-burn", label: "Color Burn" },
+  { value: "hard-light", label: "Hard Light" },
+  { value: "soft-light", label: "Soft Light" },
+  { value: "difference", label: "Difference" },
+  { value: "exclusion", label: "Exclusion" },
+  { value: "hue", label: "Hue" },
+  { value: "saturation", label: "Saturation" },
+  { value: "color", label: "Color" },
+  { value: "luminosity", label: "Luminosity" },
+  { value: "xor", label: "XOR" },
+  { value: "source-in", label: "Source In" },
+  { value: "source-out", label: "Source Out" },
+  { value: "source-atop", label: "Source Atop" },
+  { value: "destination-over", label: "Destination Over" },
+  { value: "destination-in", label: "Destination In" },
+  { value: "destination-out", label: "Destination Out" },
+  { value: "destination-atop", label: "Destination Atop" },
+];
+
+// Type for blend modes
+export type BlendMode =
+  | "normal"
+  | "multiply"
+  | "screen"
+  | "overlay"
+  | "darken"
+  | "lighten"
+  | "color-dodge"
+  | "color-burn"
+  | "hard-light"
+  | "soft-light"
+  | "difference"
+  | "exclusion"
+  | "hue"
+  | "saturation"
+  | "color"
+  | "luminosity"
+  | "xor"
+  | "source-in"
+  | "source-out"
+  | "source-atop"
+  | "destination-over"
+  | "destination-in"
+  | "destination-out"
+  | "destination-atop";
+
 export const OBJECT_PROPERTIES: Record<string, PropertyConfig[]> = {
   image: [
     {
@@ -79,12 +215,7 @@ export const OBJECT_PROPERTIES: Record<string, PropertyConfig[]> = {
       id: "blendMode",
       label: "Blend Mode",
       type: "select",
-      options: [
-        { value: "normal", label: "Normal" },
-        { value: "multiply", label: "Multiply" },
-        { value: "screen", label: "Screen" },
-        // ... other blend modes
-      ],
+      options: BLEND_MODES,
       group: "appearance",
     },
     {
@@ -182,11 +313,7 @@ export const OBJECT_PROPERTIES: Record<string, PropertyConfig[]> = {
       id: "blendMode",
       label: "Blend Mode",
       type: "select",
-      options: [
-        { value: "normal", label: "Normal" },
-        { value: "multiply", label: "Multiply" },
-        { value: "screen", label: "Screen" },
-      ],
+      options: BLEND_MODES,
       group: "appearance",
     },
   ],
@@ -253,11 +380,7 @@ export const OBJECT_PROPERTIES: Record<string, PropertyConfig[]> = {
       id: "blendMode",
       label: "Blend Mode",
       type: "select",
-      options: [
-        { value: "normal", label: "Normal" },
-        { value: "multiply", label: "Multiply" },
-        { value: "screen", label: "Screen" },
-      ],
+      options: BLEND_MODES,
       group: "appearance",
     },
   ],

@@ -135,6 +135,8 @@ export const ShapeObjectComponent = ({
           draggable
           onClick={onSelect}
           onTap={onSelect}
+          blendMode={object.blendMode}
+          globalCompositeOperation={object.blendMode}
           onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => {
             onChange({
               position: {
