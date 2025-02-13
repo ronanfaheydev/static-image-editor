@@ -72,7 +72,10 @@ function App() {
       children: [],
       isExpanded: true,
       isRoot: true,
-      position: { x: 10, y: containerHeight / 2 },
+      position: {
+        x: Math.max(10, (containerWidth - currentFormat.width) / 2),
+        y: Math.max(10, (containerHeight - currentFormat.height) / 2),
+      },
       size: currentFormat,
       rotation: 0,
       opacity: editorState.backgroundOpacity,
@@ -581,11 +584,9 @@ function App() {
     (format: Format) => {
       if (!containerWidth || !containerHeight) return 0.8; // default zoom
 
-      const horizontalPadding = 20; // 10px on each side
-      const verticalPadding = 40; // some padding for top and bottom
-      const horizontalZoom =
-        (containerWidth - horizontalPadding) / format.width;
-      const verticalZoom = (containerHeight - verticalPadding) / format.height;
+      const minPadding = 20; // 10px on each side
+      const horizontalZoom = (containerWidth - minPadding) / format.width;
+      const verticalZoom = (containerHeight - minPadding) / format.height;
 
       return Math.min(horizontalZoom, verticalZoom, 2); // cap at 2x zoom
     },
@@ -601,14 +602,14 @@ function App() {
         zoom: calculateFitZoom(format),
       }));
 
-      // Calculate the centered position
-      const centerX = 10; // 10px from left
-      const centerY = containerHeight / 2; // Halfway down
+      // Calculate the centered position with minimum padding
+      const centerX = Math.max(10, (containerWidth - format.width) / 2);
+      const centerY = Math.max(10, (containerHeight - format.height) / 2);
 
-      // Update root group and background layer sizes
+      // Update root group and background layer positions
       setObjects((prev) =>
         prev.map((obj) => {
-          if (obj.id === "root" || obj.id === "canvas-background") {
+          if (obj.id === "canvas-background") {
             return {
               ...obj,
               size: format,
@@ -619,7 +620,7 @@ function App() {
         })
       );
     },
-    [calculateFitZoom, setObjects, containerHeight]
+    [calculateFitZoom, setObjects, containerWidth, containerHeight]
   );
 
   // Handle custom format add
