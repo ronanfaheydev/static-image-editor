@@ -1,0 +1,111 @@
+@import "../../styles/variables.scss";
+
+.timeline {
+  * {
+    color: $dark-text;
+  }
+  background: $dark-background;
+  height: 100%;
+  width: 100vw;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+
+  .timeline-header {
+    position: sticky;
+    top: 0;
+    background: $dark-background;
+    z-index: 2;
+    padding: 1rem 1rem 0;
+
+    .timeline-controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+
+      button {
+        padding: 0.5rem 1rem;
+        background: #3a3a3a;
+        border: none;
+        color: white;
+        cursor: pointer;
+        border-radius: 4px;
+
+        &:hover {
+          background: #4a4a4a;
+        }
+      }
+    }
+
+    .timeline-ruler {
+      display: flex;
+      height: 24px;
+      border-bottom: 1px solid $dark-border;
+      margin-bottom: 1rem;
+
+      .timeline-marker {
+        flex: 1;
+        text-align: center;
+        border-left: 1px solid $dark-border;
+        font-size: 12px;
+      }
+    }
+  }
+
+  .timeline-objects {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0 1rem;
+
+    .timeline-row {
+      display: flex;
+      align-items: center;
+      height: 40px;
+      margin-bottom: 4px;
+      cursor: pointer;
+
+      &.selected {
+        background: rgba(255, 255, 255, 0.3);
+        .timeline-track {
+          background: rgba(255, 255, 255, 0.3);
+        }
+      }
+
+      .object-label {
+        width: 120px;
+        padding: 0 1rem;
+      }
+
+      .timeline-track {
+        flex: 1;
+        height: 100%;
+        position: relative;
+        background: #3a3a3a;
+
+        .keyframe {
+          position: absolute;
+          width: 12px;
+          height: 12px;
+          background: #ffd700;
+          border-radius: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
+          cursor: pointer;
+
+          &:hover {
+            transform: translate(-50%, -50%) scale(1.2);
+          }
+        }
+
+        .timeline-cursor {
+          position: absolute;
+          top: 0;
+          width: 2px;
+          height: 100%;
+          background: red;
+          transform: translateX(-50%);
+        }
+      }
+    }
+  }
+}

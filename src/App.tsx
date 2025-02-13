@@ -31,6 +31,8 @@ import { ResizeHandle } from "./components/ResizeHandle";
 import type Konva from "konva";
 import { DialogManager } from "./components/toolbar/DialogManager";
 import { MediaItem } from "./types/media";
+import { useAnimation } from "./hooks/useAnimation";
+import { TimelineComponent } from "./components/timeline/Timeline";
 
 function App() {
   const mainContentRef = useRef<HTMLDivElement | null>(null);
@@ -736,6 +738,21 @@ function App() {
     }
   }, [stageRef, handleAddObject]);
 
+  const {
+    animationState,
+    addKeyframe,
+    updateKeyframe,
+    deleteKeyframe,
+    togglePlayback,
+    setCurrentTime,
+  } = useAnimation(objects, handleObjectChange, stageRef);
+  const handleObjectSelect = useCallback((objectId: string) => {
+    setEditorState((prev) => ({
+      ...prev,
+      selectedIds: [objectId],
+    }));
+  }, []);
+
   return (
     <div
       className="editor-container"
@@ -816,6 +833,19 @@ function App() {
         />
         <ResizeHandle side="left" onResize={handleRightPanelResize} />
       </div>
+      <TimelineComponent
+        objects={objects}
+        timelines={animationState.timelines}
+        currentTime={animationState.currentTime}
+        duration={animationState.duration}
+        onTimeChange={setCurrentTime}
+        onKeyframeAdd={addKeyframe}
+        onKeyframeUpdate={updateKeyframe}
+        onKeyframeDelete={deleteKeyframe}
+        isPlaying={animationState.isPlaying}
+        onPlayPause={togglePlayback}
+        onObjectSelect={handleObjectSelect}
+      />
       <DialogManager
         dialogs={dialogs}
         closeDialog={closeDialogByKey}
