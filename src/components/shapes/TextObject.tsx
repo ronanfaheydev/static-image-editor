@@ -3,6 +3,8 @@ import type Konva from "konva";
 import { TextObject } from "../../types/editor";
 import { useCallback, useEffect, useRef } from "react";
 import "./TextObject.scss";
+import { KonvaEventObject } from "konva/lib/Node";
+import { Box } from "konva/lib/types";
 
 interface BoundBox {
   width: number;
@@ -14,16 +16,11 @@ interface BoundBox {
 interface TextObjectProps {
   object: TextObject;
   isSelected: boolean;
-  onSelect: () => void;
+  onSelect: (e: KonvaEventObject<Event>) => void;
   onChange: (newProps: Partial<TextObject>) => void;
-  onDragStart?: (
-    e: Konva.KonvaEventObject<DragEvent>,
-    object: TextObject
-  ) => void;
-  onDragEnd?: (
-    e: Konva.KonvaEventObject<DragEvent>,
-    object: TextObject
-  ) => void;
+  onDragStart?: (e: KonvaEventObject<DragEvent>) => void;
+  onDragEnd?: (e: KonvaEventObject<DragEvent>) => void;
+  onDragMove?: (e: KonvaEventObject<DragEvent>) => void;
 }
 
 export const TextObjectComponent = ({
@@ -33,6 +30,7 @@ export const TextObjectComponent = ({
   onChange,
   onDragStart,
   onDragEnd,
+  onDragMove,
 }: TextObjectProps) => {
   const textRef = useRef<Konva.Text>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
@@ -46,14 +44,21 @@ export const TextObjectComponent = ({
 
   const handleDragStart = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
-      onDragStart?.(e, object);
+      onDragStart?.(e);
     },
-    [onDragStart, object]
+    [onDragStart]
+  );
+
+  const handleDragMove = useCallback(
+    (e: Konva.KonvaEventObject<DragEvent>) => {
+      onDragMove?.(e);
+    },
+    [onDragMove]
   );
 
   const handleDragEnd = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
-      onDragEnd?.(e, object);
+      onDragEnd?.(e);
       onChange(
         {
           position: {
@@ -126,6 +131,7 @@ export const TextObjectComponent = ({
           });
         }}
         onDragEnd={handleDragEnd}
+        onDragMove={handleDragMove}
         onDragStart={handleDragStart}
         onTransformEnd={() => {
           const node = textRef.current;
@@ -153,7 +159,7 @@ export const TextObjectComponent = ({
       {isSelected && (
         <Transformer
           ref={transformerRef}
-          boundBoxFunc={(oldBox: BoundBox, newBox: BoundBox) => {
+          boundBoxFunc={(oldBox: Box, newBox: Box) => {
             const minWidth = 5;
             const minHeight = 5;
             if (newBox.width < minWidth || newBox.height < minHeight) {

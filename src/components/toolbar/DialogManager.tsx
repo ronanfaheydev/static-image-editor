@@ -19,7 +19,7 @@ import "./DialogManager.scss";
 
 interface DialogManagerProps {
   dialogs: {
-    [key: string | DialogKey]: {
+    [key in DialogKey]: {
       isOpen: boolean;
       props: {
         objects: EditorObjectBase[];

@@ -4,28 +4,19 @@ import { ShapeObject } from "../../types/editor";
 import { useCallback, useEffect, useRef } from "react";
 import { CurveShape } from "./CurveShape";
 import "./ShapeObject.scss";
+import { KonvaEventObject } from "konva/lib/Node";
+import { Box } from "konva/lib/types";
 
 interface ShapeObjectProps {
   object: ShapeObject;
   isSelected: boolean;
-  onSelect: () => void;
+  onSelect: (
+    e: KonvaEventObject<MouseEvent> | KonvaEventObject<TouchEvent>
+  ) => void;
   onChange: (newProps: Partial<ShapeObject>) => void;
-  onDragStart?: (
-    e: Konva.KonvaEventObject<DragEvent>,
-    object: ShapeObject
-  ) => void;
-  onDragEnd?: (
-    e: Konva.KonvaEventObject<DragEvent>,
-    object: ShapeObject
-  ) => void;
-}
-
-// Define BoundBox interface
-interface BoundBox {
-  width: number;
-  height: number;
-  x: number;
-  y: number;
+  onDragStart?: (e: KonvaEventObject<DragEvent>) => void;
+  onDragEnd?: (e: KonvaEventObject<DragEvent>) => void;
+  onContextMenu?: (e: KonvaEventObject<MouseEvent>) => void;
 }
 
 export const ShapeObjectComponent = ({
@@ -35,6 +26,7 @@ export const ShapeObjectComponent = ({
   onChange,
   onDragStart,
   onDragEnd,
+  onContextMenu,
 }: ShapeObjectProps) => {
   const shapeRef = useRef<Konva.Shape>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
@@ -122,9 +114,9 @@ export const ShapeObjectComponent = ({
 
   const handleDragStart = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
-      onDragStart?.(e, object);
+      onDragStart?.(e);
     },
-    [onDragStart, object]
+    [onDragStart]
   );
 
   const handleDragEnd = useCallback(
@@ -138,9 +130,9 @@ export const ShapeObjectComponent = ({
         },
         true // isDropping = true
       );
-      onDragEnd?.(e, object);
+      onDragEnd?.(e);
     },
-    [onChange, onDragEnd, object]
+    [onChange, onDragEnd]
   );
 
   return (
@@ -170,7 +162,7 @@ export const ShapeObjectComponent = ({
           onTap={onSelect}
           blendMode={object.blendMode}
           globalCompositeOperation={
-            object.blendMode as Konva.globalCompositeOperationType
+            object.blendMode as GlobalCompositeOperation
           }
           onDragEnd={handleDragEnd}
           onDragStart={handleDragStart}
@@ -196,12 +188,16 @@ export const ShapeObjectComponent = ({
               rotation: node.rotation(),
             });
           }}
+          onContextMenu={(e) => {
+            e.cancelBubble = true;
+            onContextMenu?.(e);
+          }}
         />
       )}
       {isSelected && (
         <Transformer
           ref={transformerRef}
-          boundBoxFunc={(oldBox: BoundBox, newBox: BoundBox) => {
+          boundBoxFunc={(oldBox: Box, newBox: Box) => {
             const minWidth = 5;
             const minHeight = 5;
             if (newBox.width < minWidth || newBox.height < minHeight) {

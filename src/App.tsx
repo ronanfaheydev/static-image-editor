@@ -8,13 +8,10 @@ import {
   BlendMode,
   GroupObject,
   EditorState,
+  TreeNodeType,
+  RootObject,
 } from "./types/editor";
-import {
-  DialogState,
-  DialogKey,
-  PositionProp,
-  EditorObjectKey,
-} from "./types/project";
+import { DialogState, DialogKey } from "./types/project";
 import "./App.scss";
 import { useHistory } from "./hooks/useHistory";
 import { useHotkeys } from "react-hotkeys-hook";
@@ -31,6 +28,14 @@ import { ResizeHandle } from "./components/ResizeHandle";
 import type Konva from "konva";
 import { DialogManager } from "./components/toolbar/DialogManager";
 import { MediaItem } from "./types/media";
+import {
+  findNodeById,
+  removeNodeFromParent,
+  updateNodeInTree,
+  addNodeToParent,
+  insertNode,
+} from "./utils/treeUtils";
+import { useEditorHotkeys } from "./hooks/useEditorHotkeys";
 
 function App() {
   const mainContentRef = useRef<HTMLDivElement | null>(null);
@@ -45,6 +50,10 @@ function App() {
     formatEditMode: "single",
     backgroundColor: "#ffffff",
     backgroundOpacity: 1,
+    selectedLayerId: null,
+    isDrawing: false,
+    drawStartPosition: null,
+    drawPreview: null,
   });
 
   // Add format state
@@ -68,11 +77,8 @@ function App() {
       type: "root",
       name: "Canvas",
       visible: true,
-      zIndex: 0,
-      parentId: null,
       children: [],
       isExpanded: true,
-      isRoot: true,
       position: {
         x: Math.max(10, (containerWidth - currentFormat.width) / 2),
         y: Math.max(10, (containerHeight - currentFormat.height) / 2) + 20, // 20 for the title text
@@ -84,7 +90,7 @@ function App() {
       fill: editorState.backgroundColor,
       stroke: "transparent",
       strokeWidth: 0,
-    },
+    } as RootObject,
   ]);
 
   // Add this function before the return statement
@@ -120,68 +126,56 @@ function App() {
   }, []);
 
   // Handle object selection
-  const handleSelect = useCallback((objectId: string | null) => {
-    setEditorState((prev) => ({
-      ...prev,
-      selectedIds: objectId ? [objectId] : [],
-    }));
-  }, []);
+  const handleSelect = useCallback(
+    (id: string | null, multiSelect: boolean) => {
+      setEditorState((prev) => {
+        // If selecting a layer, update selectedLayerId
+        const selectedObject = id ? objects.find((obj) => obj.id === id) : null;
+        const isLayer = selectedObject?.type === "layer";
+
+        return {
+          ...prev,
+          selectedIds: id
+            ? multiSelect
+              ? prev.selectedIds.includes(id)
+                ? prev.selectedIds.filter((i) => i !== id)
+                : [...prev.selectedIds, id]
+              : [id]
+            : [],
+          // Update selectedLayerId when selecting a layer
+          selectedLayerId: isLayer ? id : prev.selectedLayerId,
+        };
+      });
+    },
+    [objects]
+  );
 
   // Handle object changes
   const handleObjectChange = useCallback(
-    (id: string, newProps: Partial<EditorObjectBase>) => {
-      console.log("handleObjectChange", id, newProps);
+    (id: string, changes: Partial<EditorObjectBase>) => {
       if (editorState.formatEditMode === "single") {
-        setObjects((prev) =>
-          prev.map((obj) => (obj.id === id ? { ...obj, ...newProps } : obj))
-        );
+        setObjects((prev) => updateNodeInTree(prev, id, changes));
       } else {
-        const positionProps: PositionProp[] = ["position", "size", "rotation"];
-        const nonPositionProps = Object.keys(newProps).filter(
-          (key): key is EditorObjectKey =>
-            !positionProps.includes(key as PositionProp)
-        );
+        // Handle multi-edit mode
+        const targetNode = findNodeById(objects, id);
+        if (!targetNode) return;
 
-        if (nonPositionProps.length > 0) {
-          const positionChanges = positionProps.reduce<
-            Partial<EditorObjectBase>
-          >((acc, prop) => {
-            if (prop in newProps) {
-              acc[prop] = newProps[prop] as any;
-            }
-            return acc;
-          }, {});
-
-          const styleChanges = nonPositionProps.reduce<
-            Partial<EditorObjectBase>
-          >((acc, prop) => {
-            acc[prop] = newProps[prop] as any;
-            return acc;
-          }, {});
-
-          setObjects((prev) =>
-            prev.map((obj) => {
-              if (obj.id === id) {
-                return { ...obj, ...newProps };
-              }
-              if (obj.type === objects.find((o) => o.id === id)?.type) {
-                return {
-                  ...obj,
-                  ...styleChanges,
-                  ...positionChanges,
-                };
-              }
-              return obj;
-            })
+        setObjects((prev) => {
+          const similarNodes = prev.filter(
+            (node) => node.type === targetNode.type && node.id !== id
           );
-        } else {
-          setObjects((prev) =>
-            prev.map((obj) => (obj.id === id ? { ...obj, ...newProps } : obj))
-          );
-        }
+
+          // Update target node and similar nodes
+          let updatedTree = updateNodeInTree(prev, id, changes);
+          similarNodes.forEach((node) => {
+            updatedTree = updateNodeInTree(updatedTree, node.id, changes);
+          });
+
+          return updatedTree;
+        });
       }
     },
-    [editorState.formatEditMode, objects, setObjects]
+    [editorState.formatEditMode, objects]
   );
 
   // Handle image upload
@@ -191,7 +185,6 @@ function App() {
       if (file) {
         const reader = new FileReader();
         reader.onload = (event) => {
-          // Get the canvas center position
           const centerX =
             (containerWidth - currentFormat.width) / 2 +
             currentFormat.width / 2;
@@ -203,7 +196,7 @@ function App() {
             id: `image-${Date.now()}`,
             type: "image",
             src: event.target?.result as string,
-            position: { x: centerX - 100, y: centerY - 100 }, // Center the image
+            position: { x: centerX - 100, y: centerY - 100 },
             size: { width: 200, height: 200 },
             rotation: 0,
             opacity: 1,
@@ -211,22 +204,16 @@ function App() {
             name: file.name,
             zIndex: objects.length,
             blendMode: "normal",
-            parentId: null,
+            parentId: editorState.selectedLayerId || null,
             children: [],
             isExpanded: true,
-            isRoot: false,
           };
 
           setObjects((prev) => [...prev, newImage]);
-
-          // Select the new image immediately
           setEditorState((prev) => ({
             ...prev,
             selectedIds: [newImage.id],
           }));
-
-          // Close the media library dialog
-          closeDialogByKey("mediaLibrary");
         };
         reader.readAsDataURL(file);
       }
@@ -238,7 +225,7 @@ function App() {
       objects.length,
       setObjects,
       setEditorState,
-      closeDialogByKey,
+      editorState.selectedLayerId,
     ]
   );
 
@@ -253,7 +240,7 @@ function App() {
       id: `text-${Date.now()}`,
       type: "text",
       text: "Double click to edit",
-      position: { x: centerX - 100, y: centerY - 15 }, // Center the text
+      position: { x: centerX - 100, y: centerY - 15 },
       size: { width: 200, height: 30 },
       fontSize: 20,
       fontFamily: "Arial",
@@ -263,11 +250,10 @@ function App() {
       visible: true,
       name: "New Text",
       zIndex: objects.length,
-      blendMode: "normal" as BlendMode,
-      parentId: null,
+      blendMode: "normal",
+      parentId: editorState.selectedLayerId || null,
       children: [],
       isExpanded: true,
-      isRoot: false,
     };
     setObjects((prev) => [...prev, newText]);
   }, [
@@ -276,6 +262,7 @@ function App() {
     currentFormat,
     objects.length,
     setObjects,
+    editorState.selectedLayerId,
   ]);
 
   // Wrap getSelectedObject
@@ -305,34 +292,34 @@ function App() {
       const centerY =
         (containerHeight - currentFormat.height) / 2 + currentFormat.height / 2;
 
-      const id = `shape-${Date.now()}`;
       const newShape: ShapeObject = {
-        ...createObjectDefaults(id, shapeType, objects.length),
-        id,
+        id: `shape-${Date.now()}`,
         type: "shape",
         shapeType,
-        position: { x: centerX - 50, y: centerY - 50 }, // Center the shape
+        position: { x: centerX - 50, y: centerY - 50 },
         size: { width: 100, height: 100 },
         fill: "#cccccc",
         stroke: "#000000",
         strokeWidth: 2,
         rotation: 0,
         opacity: 1,
-        blendMode: "normal" as BlendMode,
-        parentId: null,
+        visible: true,
+        name: `${shapeType} ${objects.length + 1}`,
+        zIndex: objects.length,
+        blendMode: "normal",
+        parentId: editorState.selectedLayerId || null,
         children: [],
         isExpanded: true,
-        isRoot: false,
       };
       setObjects((prev) => [...prev, newShape]);
     },
     [
-      createObjectDefaults,
-      currentFormat,
-      containerHeight,
       containerWidth,
+      containerHeight,
+      currentFormat,
       objects.length,
       setObjects,
+      editorState.selectedLayerId,
     ]
   );
 
@@ -487,7 +474,6 @@ function App() {
         parentId: null,
         children: [],
         isExpanded: false,
-        isRoot: false,
       };
 
       setObjects((prev) => [...prev, newImage]);
@@ -695,39 +681,54 @@ function App() {
   const handleDeleteObject = useCallback(
     (id: string) => {
       setObjects((prev) => {
-        // First, recursively get all child IDs
-        const getAllChildIds = (objId: string): string[] => {
-          const children = prev.filter((obj) => obj.parentId === objId);
-          return [
-            objId,
-            ...children.flatMap((child) => getAllChildIds(child.id)),
-          ];
-        };
+        // First find and remove the node and its children
+        const updatedTree = removeNodeFromParent(prev, id);
 
-        const idsToRemove = getAllChildIds(id);
-        return prev.filter((obj) => !idsToRemove.includes(obj.id));
+        // Then clean up any references to deleted nodes
+        return updatedTree.map((node) => ({
+          ...node,
+          children: node.children.filter(
+            (child) => findNodeById(updatedTree, child.id) !== null
+          ),
+        }));
       });
     },
     [setObjects]
   );
 
-  // Add to the Canvas component props
+  // Update handleAddObject to respect selected layer
   const handleAddObject = useCallback(
-    (object: EditorObjectBase) => {
-      setObjects((prev) => [...prev, object]);
-      setEditorState((prev) => ({
-        ...prev,
-        selectedIds: [object.id],
-      }));
+    (object: Partial<EditorObjectBase>) => {
+      const root = objects.find((obj) => obj.type === "root");
+      const newObject: EditorObjectBase = {
+        ...object,
+        id: `${object.type}-${Date.now()}`,
+        parentId: editorState.selectedLayerId || root?.id || null, // Add to selected layer if one is selected
+        zIndex: Math.max(...objects.map((obj) => obj.zIndex), 0) + 1,
+        isExpanded: false,
+        visible: true,
+        name: object.name || `${object.type}-${objects.length + 1}`,
+        children: [],
+        position: object.position || { x: 0, y: 0 },
+        size: object.size || { width: 0, height: 0 },
+        rotation: object.rotation || 0,
+        opacity: object.opacity || 1,
+        type: object.type as TreeNodeType,
+        blendMode: object.blendMode || "normal",
+      };
+
+      const updatedObjects = insertNode(objects, newObject, newObject.parentId);
+
+      setObjects(updatedObjects);
     },
-    [setObjects, setEditorState]
+    [objects, editorState.selectedLayerId, setObjects]
   );
 
   // Add the event listener in the Canvas component
   useEffect(() => {
     if (stageRef.current) {
       const stage = stageRef.current;
-      stage.on("addObject", (e) => {
+      stage.on("addObject", (e: KonvaEventObject<CustomEvent>) => {
         handleAddObject(e.object);
       });
       return () => {
@@ -735,6 +736,394 @@ function App() {
       };
     }
   }, [stageRef, handleAddObject]);
+
+  // Add these functions near other handlers
+  const handleCut = useCallback(() => {
+    const selectedObjects = objects.filter((obj) =>
+      editorState.selectedIds.includes(obj.id)
+    );
+    localStorage.setItem("clipboard", JSON.stringify(selectedObjects));
+    setObjects((prev) =>
+      prev.filter((obj) => !editorState.selectedIds.includes(obj.id))
+    );
+  }, [editorState.selectedIds, objects]);
+
+  const handleCopy = useCallback(() => {
+    const selectedNodes = editorState.selectedIds
+      .map((id) => findNodeById(objects, id))
+      .filter((node): node is EditorObjectBase => node !== null);
+
+    if (selectedNodes.length > 0) {
+      localStorage.setItem("clipboard", JSON.stringify(selectedNodes));
+    }
+  }, [editorState.selectedIds, objects]);
+
+  // Update handlePaste to respect selected layer
+  const handlePaste = useCallback(() => {
+    const clipboardData = localStorage.getItem("clipboard");
+    if (!clipboardData) return;
+
+    const pastedNodes = JSON.parse(clipboardData) as EditorObjectBase[];
+    const offset = { x: 20, y: 20 };
+
+    setObjects((prev) => {
+      const newNodes = pastedNodes.map((node) => ({
+        ...node,
+        id: `${node.type}-${Date.now()}-${Math.random()}`,
+        position: {
+          x: node.position.x + offset.x,
+          y: node.position.y + offset.y,
+        },
+        parentId: editorState.selectedLayerId || null, // Add to selected layer
+        children: [], // Reset children for pasted nodes
+      }));
+
+      return [...prev, ...newNodes];
+    });
+  }, [editorState.selectedLayerId, setObjects]);
+
+  // Update the z-index handlers to reorder objects within their layer
+  const handleBringForward = useCallback(() => {
+    if (editorState.selectedIds.length === 0) return;
+
+    setObjects((prev) => {
+      const selectedObject = prev.find(
+        (obj) => obj.id === editorState.selectedIds[0]
+      );
+      if (!selectedObject) return prev;
+
+      // Get all objects in the same layer
+      const layerObjects = prev.filter(
+        (obj) => obj.parentId === selectedObject.parentId
+      );
+      const otherObjects = prev.filter(
+        (obj) => obj.parentId !== selectedObject.parentId
+      );
+
+      const currentIndex = layerObjects.indexOf(selectedObject);
+      if (currentIndex === layerObjects.length - 1) return prev; // Already at top
+
+      // Swap positions in the array
+      const reorderedLayerObjects = [...layerObjects];
+      [
+        reorderedLayerObjects[currentIndex],
+        reorderedLayerObjects[currentIndex + 1],
+      ] = [
+        reorderedLayerObjects[currentIndex + 1],
+        reorderedLayerObjects[currentIndex],
+      ];
+
+      return [...otherObjects, ...reorderedLayerObjects];
+    });
+  }, [editorState.selectedIds]);
+
+  const handleSendBackward = useCallback(() => {
+    if (editorState.selectedIds.length === 0) return;
+
+    setObjects((prev) => {
+      const selectedObject = prev.find(
+        (obj) => obj.id === editorState.selectedIds[0]
+      );
+      if (!selectedObject) return prev;
+
+      // Get all objects in the same layer
+      const layerObjects = prev.filter(
+        (obj) => obj.parentId === selectedObject.parentId
+      );
+      const otherObjects = prev.filter(
+        (obj) => obj.parentId !== selectedObject.parentId
+      );
+
+      const currentIndex = layerObjects.indexOf(selectedObject);
+      if (currentIndex === 0) return prev; // Already at bottom
+
+      // Swap positions in the array
+      const reorderedLayerObjects = [...layerObjects];
+      [
+        reorderedLayerObjects[currentIndex],
+        reorderedLayerObjects[currentIndex - 1],
+      ] = [
+        reorderedLayerObjects[currentIndex - 1],
+        reorderedLayerObjects[currentIndex],
+      ];
+
+      return [...otherObjects, ...reorderedLayerObjects];
+    });
+  }, [editorState.selectedIds]);
+
+  const handleBringToFront = useCallback(() => {
+    if (editorState.selectedIds.length === 0) return;
+
+    setObjects((prev) => {
+      const selectedObject = prev.find(
+        (obj) => obj.id === editorState.selectedIds[0]
+      );
+      if (!selectedObject) return prev;
+
+      // Get all objects in the same layer
+      const layerObjects = prev.filter(
+        (obj) => obj.parentId === selectedObject.parentId
+      );
+      const otherObjects = prev.filter(
+        (obj) => obj.parentId !== selectedObject.parentId
+      );
+
+      // Move object to end of layer objects array
+      const reorderedLayerObjects = [
+        ...layerObjects.filter((obj) => obj.id !== selectedObject.id),
+        selectedObject,
+      ];
+
+      return [...otherObjects, ...reorderedLayerObjects];
+    });
+  }, [editorState.selectedIds]);
+
+  const handleSendToBack = useCallback(() => {
+    if (editorState.selectedIds.length === 0) return;
+
+    setObjects((prev) => {
+      const selectedObject = prev.find(
+        (obj) => obj.id === editorState.selectedIds[0]
+      );
+      if (!selectedObject) return prev;
+
+      // Get all objects in the same layer
+      const layerObjects = prev.filter(
+        (obj) => obj.parentId === selectedObject.parentId
+      );
+      const otherObjects = prev.filter(
+        (obj) => obj.parentId !== selectedObject.parentId
+      );
+
+      // Move object to start of layer objects array
+      const reorderedLayerObjects = [
+        selectedObject,
+        ...layerObjects.filter((obj) => obj.id !== selectedObject.id),
+      ];
+
+      return [...otherObjects, ...reorderedLayerObjects];
+    });
+  }, [editorState.selectedIds]);
+
+  // Add these functions near other handlers
+  const handleGroup = useCallback(() => {
+    if (editorState.selectedIds.length < 2) return;
+
+    setObjects((prev) => {
+      const selectedNodes = editorState.selectedIds
+        .map((id) => findNodeById(prev, id))
+        .filter((node): node is EditorObjectBase => node !== null);
+
+      if (selectedNodes.length === 0) return prev;
+
+      // Calculate group bounds
+      const minX = Math.min(...selectedNodes.map((node) => node.position.x));
+      const minY = Math.min(...selectedNodes.map((node) => node.position.y));
+      const maxX = Math.max(
+        ...selectedNodes.map((node) => node.position.x + node.size.width)
+      );
+      const maxY = Math.max(
+        ...selectedNodes.map((node) => node.position.y + node.size.height)
+      );
+
+      // Create new group node
+      const groupNode: GroupObject = {
+        id: `group-${Date.now()}`,
+        type: "group",
+        name: "Group",
+        position: { x: minX, y: minY },
+        size: { width: maxX - minX, height: maxY - minY },
+        rotation: 0,
+        opacity: 1,
+        visible: true,
+        children: [],
+        isExpanded: true,
+        zIndex: Math.max(...selectedNodes.map((node) => node.zIndex)),
+        blendMode: "normal",
+        parentId: editorState.selectedLayerId || null,
+      };
+
+      // Remove selected nodes from their current parents
+      let updatedTree = prev;
+      selectedNodes.forEach((node) => {
+        updatedTree = removeNodeFromParent(updatedTree, node.id);
+      });
+
+      // Add nodes to group with adjusted positions
+      const groupChildren = selectedNodes.map((node) => ({
+        ...node,
+        position: {
+          x: node.position.x - minX,
+          y: node.position.y - minY,
+        },
+      }));
+
+      // Add group with its children to tree
+      groupNode.children = groupChildren;
+      return [...updatedTree, groupNode];
+    });
+
+    // Update selection to new group
+    setEditorState((prev) => ({
+      ...prev,
+      selectedIds: [`group-${Date.now()}`],
+    }));
+  }, [
+    editorState.selectedIds,
+    editorState.selectedLayerId,
+    setObjects,
+    setEditorState,
+  ]);
+
+  const handleUngroup = useCallback(() => {
+    setObjects((prev) => {
+      const selectedGroups = editorState.selectedIds
+        .map((id) => findNodeById(prev, id))
+        .filter(
+          (node): node is GroupObject => node !== null && node.type === "group"
+        );
+
+      if (selectedGroups.length === 0) return prev;
+
+      let updatedTree = prev;
+      const ungroupedNodeIds: string[] = [];
+
+      selectedGroups.forEach((group) => {
+        // Remove group from tree
+        updatedTree = removeNodeFromParent(updatedTree, group.id);
+
+        // Add each child back with adjusted position
+        group.children.forEach((child) => {
+          const adjustedChild = {
+            ...child,
+            position: {
+              x: child.position.x + group.position.x,
+              y: child.position.y + group.position.y,
+            },
+          };
+          updatedTree = [...updatedTree, adjustedChild];
+          ungroupedNodeIds.push(child.id);
+        });
+      });
+
+      // Update selection to ungrouped nodes
+      setEditorState((prev) => ({
+        ...prev,
+        selectedIds: ungroupedNodeIds,
+      }));
+
+      return updatedTree;
+    });
+  }, [editorState.selectedIds, setObjects, setEditorState]);
+
+  // Add keyboard shortcuts
+  useHotkeys("cmd+x", handleCut, [handleCut]);
+  useHotkeys("cmd+c", handleCopy, [handleCopy]);
+  useHotkeys("cmd+v", handlePaste, [handlePaste]);
+  // Add keyboard shortcuts for group/ungroup
+  useHotkeys(
+    "cmd+g",
+    (e) => {
+      e.preventDefault();
+      handleGroup();
+    },
+    [handleGroup]
+  );
+
+  useHotkeys(
+    "cmd+shift+g",
+    (e) => {
+      e.preventDefault();
+      handleUngroup();
+    },
+    [handleUngroup]
+  );
+
+  // Add these near other keyboard shortcuts
+  useHotkeys(
+    "cmd+]",
+    (e) => {
+      e.preventDefault();
+      handleBringToFront();
+    },
+    [handleBringToFront]
+  );
+
+  useHotkeys(
+    "cmd+shift+]",
+    (e) => {
+      e.preventDefault();
+      handleBringForward();
+    },
+    [handleBringForward]
+  );
+
+  useHotkeys(
+    "cmd+[",
+    (e) => {
+      e.preventDefault();
+      handleSendToBack();
+    },
+    [handleSendToBack]
+  );
+
+  useHotkeys(
+    "cmd+shift+[",
+    (e) => {
+      e.preventDefault();
+      handleSendBackward();
+    },
+    [handleSendBackward]
+  );
+
+  // Add these with your other keyboard shortcuts
+  useHotkeys(
+    "v",
+    () => {
+      setEditorState((prev) => ({ ...prev, tool: "select" }));
+    },
+    []
+  );
+
+  useHotkeys(
+    "t",
+    () => {
+      setEditorState((prev) => ({ ...prev, tool: "text" }));
+    },
+    []
+  );
+
+  useHotkeys(
+    "r",
+    () => {
+      setEditorState((prev) => ({ ...prev, tool: "shape" }));
+    },
+    []
+  );
+
+  useHotkeys(
+    "i",
+    () => {
+      setEditorState((prev) => ({ ...prev, tool: "image" }));
+    },
+    []
+  );
+
+  useEditorHotkeys({
+    setEditorState,
+    handleCut,
+    handleCopy,
+    handlePaste,
+    handleDelete: handleDeleteObject,
+    handleUndo: undo,
+    handleRedo: redo,
+    handleBringToFront,
+    handleBringForward,
+    handleSendToBack,
+    handleSendBackward,
+    handleGroup,
+    handleUngroup,
+  });
 
   return (
     <div
@@ -746,17 +1135,10 @@ function App() {
       <Toolbar
         editorState={editorState}
         setEditorState={setEditorState}
-        handleAddText={handleAddText}
-        handleAddShape={handleAddShape}
-        handleImageUpload={handleImageUpload}
         undo={undo}
         redo={redo}
         canUndo={canUndo}
         canRedo={canRedo}
-        currentFormat={currentFormat}
-        handleFormatChange={handleFormatChange}
-        handleCustomFormatAdd={handleCustomFormatAdd}
-        handleFormatEditModeChange={handleFormatEditModeChange}
         openDialog={openDialog}
         lastModified={lastModified}
       />
@@ -786,7 +1168,7 @@ function App() {
       <div className="main-content" ref={mainContentRef}>
         <Canvas
           editorState={editorState}
-          stageRef={stageRef}
+          setEditorState={setEditorState}
           objects={objects}
           stagePosition={stagePosition}
           currentFormat={currentFormat}
@@ -797,6 +1179,16 @@ function App() {
           handleDragEnd={handleDragEnd}
           handleDragMove={handleDragMove}
           handleAddObject={handleAddObject}
+          handleCut={handleCut}
+          handleCopy={handleCopy}
+          handlePaste={handlePaste}
+          handleBringToFront={handleBringToFront}
+          handleSendToBack={handleSendToBack}
+          handleGroup={handleGroup}
+          handleUngroup={handleUngroup}
+          handleBringForward={handleBringForward}
+          handleSendBackward={handleSendBackward}
+          stageRef={stageRef}
         />
       </div>
 

@@ -4,11 +4,12 @@ import type Konva from "konva";
 import { ImageObject } from "../../types/editor";
 import useImage from "use-image";
 import "./ImageObject.scss";
+import { KonvaEventObject } from "konva/lib/Node";
 
 interface ImageObjectProps {
   object: ImageObject;
   isSelected: boolean;
-  onSelect: () => void;
+  onSelect: (e: KonvaEventObject<Event>) => void;
   onChange: (changes: Partial<ImageObject>) => void;
   onDragStart?: (
     e: Konva.KonvaEventObject<DragEvent>,
@@ -22,6 +23,7 @@ interface ImageObjectProps {
     e: Konva.KonvaEventObject<DragEvent>,
     object: ImageObject
   ) => void;
+  onContextMenu?: (e: KonvaEventObject<MouseEvent>) => void;
 }
 
 export const ImageObjectComponent: React.FC<ImageObjectProps> = ({
@@ -32,6 +34,7 @@ export const ImageObjectComponent: React.FC<ImageObjectProps> = ({
   onDragStart,
   onDragEnd,
   onDragMove,
+  onContextMenu,
 }) => {
   const [image] = useImage(object.src);
   const shapeRef = useRef<Konva.Image>(null);
@@ -128,6 +131,10 @@ export const ImageObjectComponent: React.FC<ImageObjectProps> = ({
         cornerRadius={object.borderRadius || 0}
         stroke={object.borderColor}
         strokeWidth={object.borderWidth || 0}
+        onContextMenu={(e) => {
+          e.cancelBubble = true;
+          onContextMenu?.(e);
+        }}
       />
       {isSelected && (
         <Transformer

@@ -21,9 +21,4 @@
 .canvas-wrapper {
   background: transparent;
   box-shadow: none;
-  cursor: grab;
-
-  &:active {
-    cursor: grabbing;
-  }
 }

@@ -1,6 +1,6 @@
 import React from "react";
 
-import { EditorState, ShapeObject } from "../../types/editor";
+import { EditorState, ShapeType } from "../../types/editor";
 import Bell from "../../assets/icons/bell.svg";
 import Save from "../../assets/icons/download.svg";
 import Layout from "../../assets/icons/layout.svg";
@@ -16,12 +16,7 @@ import "./Toolbar.scss";
 
 interface ToolbarProps {
   editorState: EditorState;
-  setEditorState: (
-    state: EditorState | ((prev: EditorState) => EditorState)
-  ) => void;
-  handleAddText: () => void;
-  handleAddShape: (shapeType: ShapeObject["shapeType"]) => void;
-  handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  setEditorState: (state: EditorState) => void;
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
@@ -31,9 +26,8 @@ interface ToolbarProps {
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
-  handleAddText,
-  handleAddShape,
-  handleImageUpload,
+  editorState,
+  setEditorState,
   undo,
   redo,
   canUndo,
@@ -50,6 +44,18 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     }).format(date);
   };
 
+  const handleToolSelect = (
+    tool: EditorState["tool"],
+    shapeType?: ShapeType
+  ) => {
+    setEditorState((prev) => ({
+      ...prev,
+      tool,
+      selectedIds: [], // Clear selection when changing tools
+      selectedShapeType: shapeType,
+    }));
+  };
+
   return (
     <div className="toolbar">
       <div className="toolbar-title">
@@ -59,32 +65,66 @@ export const Toolbar: React.FC<ToolbarProps> = ({
       </div>
 
       <div className="toolbar-main">
-        <button>
+        <button
+          className={`tool-button ${
+            editorState.tool === "select" ? "active" : ""
+          }`}
+          onClick={() => handleToolSelect("select")}
+          title="Select (V)"
+        >
           <Select />
         </button>
 
-        <button onClick={() => openDialog("mediaLibrary")}>
+        <button
+          className={`tool-button ${
+            editorState.tool === "image" ? "active" : ""
+          }`}
+          onClick={() => {
+            handleToolSelect("image");
+            openDialog("mediaLibrary");
+          }}
+          title="Image (I)"
+        >
           <Image />
         </button>
 
         <div className="dropdown">
-          <button className="dropdown-trigger">
+          <button
+            className={`dropdown-trigger ${
+              editorState.tool === "shape" ? "active" : ""
+            }`}
+            onClick={() => handleToolSelect("shape")}
+          >
             <span className="icon">
               <Square />
             </span>
           </button>
           <div className="dropdown-content">
-            <button onClick={() => handleAddShape("rectangle")}>
+            <button onClick={() => handleToolSelect("shape", "rectangle")}>
               Rectangle
             </button>
-            <button onClick={() => handleAddShape("circle")}>Circle</button>
-            <button onClick={() => handleAddShape("star")}>Star</button>
-            <button onClick={() => handleAddShape("line")}>Line</button>
-            <button onClick={() => handleAddShape("curve")}>Curve</button>
+            <button onClick={() => handleToolSelect("shape", "circle")}>
+              Circle
+            </button>
+            <button onClick={() => handleToolSelect("shape", "star")}>
+              Star
+            </button>
+            <button onClick={() => handleToolSelect("shape", "line")}>
+              Line
+            </button>
+            <button onClick={() => handleToolSelect("shape", "curve")}>
+              Curve
+            </button>
           </div>
         </div>
 
-        <button onClick={handleAddText}>
+        <button
+          className={`tool-button ${
+            editorState.tool === "text" ? "active" : ""
+          }`}
+          onClick={() => handleToolSelect("text")}
+          title="Text (T)"
+        >
           <span className="icon">
             <Text />
           </span>
@@ -97,19 +137,21 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         </div>
 
         <div className="toolbar-history">
-          <button onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">
-            <span className="icon">
-              <Undo />
-            </span>
+          <button
+            className="tool-button"
+            onClick={undo}
+            disabled={!canUndo}
+            title="Undo (⌘Z)"
+          >
+            <Undo />
           </button>
           <button
+            className="tool-button"
             onClick={redo}
             disabled={!canRedo}
-            title="Redo (Ctrl+Shift+Z)"
+            title="Redo (⌘⇧Z)"
           >
-            <span className="icon">
-              <Redo />
-            </span>
+            <Redo />
           </button>
         </div>
 

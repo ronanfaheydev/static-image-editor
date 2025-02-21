@@ -90,82 +90,79 @@ $selected-bg: #f5f5f5;
   .layer-item {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem;
-    background: $item-bg;
-    border: 1px solid $border-color;
-    margin-bottom: 0.5rem;
-    border-radius: 4px;
-    transition: transform $transition-speed ease;
-    position: relative;
+    padding: 4px 8px;
+    cursor: pointer;
     user-select: none;
+    gap: 8px;
+
+    &:hover {
+      background-color: #f5f5f5;
+    }
 
     &.selected {
-      background: $selected-bg;
-      border-color: #ccc;
-    }
-
-    &.droppable {
       background-color: #e6f7ff;
-      border: 1px dashed #1890ff;
     }
 
-    .layer-content {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      flex: 1;
-      position: relative;
+    .drag-handle {
+      cursor: grab;
+      color: #999;
+      padding: 0 4px;
+
+      &:active {
+        cursor: grabbing;
+      }
     }
 
-    .toggle-group {
-      padding: 0.25rem;
-      background: none;
-      border: none;
-      cursor: pointer;
-      font-size: 0.8rem;
-      color: $text-color;
-      opacity: 0.7;
-      width: 24px;
+    .visibility-toggle {
+      padding: 0.1rem;
+      background: $white;
+      padding: 0.1rem;
       height: 24px;
+      width: 24px;
+      .visible-icon {
+        background: $primary-color;
+        height: 100%;
+        width: 100%;
+      }
+      .hidden-icon {
+        background: transparent;
+        border: 1px solid $primary-color;
+        height: 100%;
+        width: 100%;
+      }
+    }
 
-      &:hover {
-        opacity: 1;
+    .layer-name {
+      flex: 1;
+      border: none;
+      background: none;
+      padding: 2px 4px;
+      font-size: 14px;
+
+      &:hover,
+      &:focus {
+        background: white;
+        border: 1px solid #d9d9d9;
+        outline: none;
       }
     }
 
     .delete-button {
       opacity: 0;
+      transition: opacity 0.2s;
+      padding: 0 4px;
       background: none;
       border: none;
-      color: #ff4d4f;
-      font-size: 16px;
+      color: #999;
       cursor: pointer;
-      padding: 0;
-      border-radius: 4px;
-      transition: all 0.2s ease;
 
       &:hover {
-        background: rgba(255, 77, 79, 0.1);
+        color: #ff4d4f;
       }
     }
 
     &:hover .delete-button {
       opacity: 1;
-    }
-
-    .layer-type {
-      position: absolute;
-      bottom: 0;
-      right: 0;
-      background: $white;
-      padding: 0.1rem;
-      border: 1px solid $border-color;
-      border-radius: $border-radius;
-      font-size: 0.6rem;
-      text-transform: uppercase;
-      font-weight: 600;
-      color: $text-color;
     }
   }
 
@@ -205,22 +202,52 @@ $selected-bg: #f5f5f5;
     padding: 0.5rem;
     border-bottom: 1px solid $border-color;
   }
-  .visibility-toggle {
-    padding: 0.1rem;
-    background: $white;
-    padding: 0.1rem;
-    height: 24px;
-    width: 24px;
-    .visible-icon {
-      background: $primary-color;
-      height: 100%;
-      width: 100%;
-    }
-    .hidden-icon {
-      background: transparent;
-      border: 1px solid $primary-color;
-      height: 100%;
-      width: 100%;
+}
+
+// Add styles for root layer
+.root-layer {
+  background-color: #f0f0f0;
+  padding: 8px;
+  margin-bottom: 8px;
+  border-radius: 4px;
+  cursor: default;
+
+  .layer-name {
+    font-weight: 500;
+    color: #666;
+  }
+
+  // Disable hover effects
+  &:hover {
+    background-color: #f0f0f0;
+  }
+}
+
+.layer-container {
+  margin-bottom: 8px;
+  padding: 8px;
+  background: #fafafa;
+  border-radius: 4px;
+
+  &.root-layer {
+    background: #f0f0f0;
+  }
+
+  .layer-items {
+    margin-left: 20px;
+    min-height: 32px; // Ensure empty containers are droppable
+    padding: 4px;
+
+    &:empty {
+      border: 1px dashed #d9d9d9;
+      border-radius: 4px;
     }
   }
+}
+
+.dragging-item {
+  padding: 8px;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }

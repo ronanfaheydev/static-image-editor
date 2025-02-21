@@ -1,11 +1,16 @@
 import React, { useMemo, useRef, useState, useCallback } from "react";
-import { Stage, Layer, Rect, Group, Text } from "react-konva";
+import { Stage, Layer, Rect, Group, Text, Transformer } from "react-konva";
 import {
   EditorState,
   EditorObjectBase,
   ImageObject,
   TextObject,
   ShapeObject,
+  GroupObject,
+  LayerObject,
+  Position,
+  Size,
+  ShapeType,
 } from "../types/editor";
 import { ImageObjectComponent } from "./shapes/ImageObject";
 import { TextObjectComponent } from "./shapes/TextObject";
@@ -16,23 +21,36 @@ import "./Canvas.scss";
 import type Konva from "konva";
 import { Guidelines } from "./shapes/Guidelines";
 import { Format } from "../types/format";
+import { ContextMenu, ContextMenuItem } from "./common/ContextMenu";
 
 interface CanvasProps {
   editorState: EditorState;
+  setEditorState: React.Dispatch<React.SetStateAction<EditorState>>;
   stageRef: React.RefObject<Konva.Stage>;
   objects: EditorObjectBase[];
   currentFormat: Format;
   stagePosition: { x: number; y: number };
-  handleSelect: (id: string | null) => void;
+  handleSelect: (id: string | null, multiSelect: boolean) => void;
   handleObjectChange: (id: string, changes: Partial<EditorObjectBase>) => void;
   handleWheel: (e: KonvaEventObject<WheelEvent>) => void;
   handleDragStart: (e: KonvaEventObject<DragEvent>) => void;
   handleDragEnd: (e: KonvaEventObject<DragEvent>) => void;
   handleDragMove: (e: KonvaEventObject<DragEvent>) => void;
+  handleCut: () => void;
+  handleCopy: () => void;
+  handlePaste: () => void;
+  handleBringToFront: () => void;
+  handleSendToBack: () => void;
+  handleGroup: () => void;
+  handleUngroup: () => void;
+  handleBringForward: () => void;
+  handleSendBackward: () => void;
+  handleAddObject: (object: EditorObjectBase) => void;
 }
 
 export const Canvas: React.FC<CanvasProps> = ({
   editorState,
+  setEditorState,
   stageRef,
   objects,
   stagePosition,
@@ -43,6 +61,16 @@ export const Canvas: React.FC<CanvasProps> = ({
   handleDragStart,
   handleDragEnd,
   handleDragMove,
+  handleCut,
+  handleCopy,
+  handlePaste,
+  handleBringToFront,
+  handleSendToBack,
+  handleGroup,
+  handleUngroup,
+  handleBringForward,
+  handleSendBackward,
+  handleAddObject,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const { width: CANVAS_WIDTH, height: CANVAS_HEIGHT } =
@@ -52,33 +80,23 @@ export const Canvas: React.FC<CanvasProps> = ({
     null
   );
 
-  const snapToObjects = useCallback(
-    (object: EditorObjectBase, newPosition: { x: number; y: number }) => {
-      const snapThreshold = 5;
-      let snappedPosition = { ...newPosition };
+  // Add state for context menu
+  const [contextMenu, setContextMenu] = useState<{
+    show: boolean;
+    position: { x: number; y: number };
+    objectId: string | null;
+  }>({
+    show: false,
+    position: { x: 0, y: 0 },
+    objectId: null,
+  });
 
-      const draggedCenterX = newPosition.x + object.size.width / 2;
-      const draggedCenterY = newPosition.y + object.size.height / 2;
-
-      objects.forEach((obj) => {
-        if (obj.id === object.id || !obj.visible || obj.type === "root") return;
-
-        const targetCenterX = obj.position.x + obj.size.width / 2;
-        const targetCenterY = obj.position.y + obj.size.height / 2;
-
-        if (Math.abs(draggedCenterX - targetCenterX) < snapThreshold) {
-          snappedPosition.x = targetCenterX - object.size.width / 2;
-        }
-
-        if (Math.abs(draggedCenterY - targetCenterY) < snapThreshold) {
-          snappedPosition.y = targetCenterY - object.size.height / 2;
-        }
-      });
-
-      return snappedPosition;
-    },
-    [objects]
-  );
+  const [drawPreview, setDrawPreview] = useState<{
+    type: "text" | "shape" | "image";
+    shapeType?: ShapeType;
+    position: Position;
+    size: Size;
+  } | null>(null);
 
   const _handleObjectChange = useCallback(
     (id: string, changes: Partial<EditorObjectBase>) => {
@@ -90,40 +108,22 @@ export const Canvas: React.FC<CanvasProps> = ({
       // }
       handleObjectChange(id, changes);
     },
-    [handleObjectChange, objects]
+    [handleObjectChange]
   );
 
-  // Handle clicking on stage background or format rect
-  const handleBackgroundClick = (e: KonvaEventObject<MouseEvent>) => {
-    // Only deselect if clicking the stage or format background rect
-    const clickedTarget = e.target;
-    const isBackground = clickedTarget === clickedTarget.getStage();
-    const isFormatRect = clickedTarget.attrs?.name === "format-background";
-
-    if (isBackground || isFormatRect) {
-      e.cancelBubble = true;
-      handleSelect(null);
-    }
-  };
-
-  const groupedObjects = useMemo(
-    () =>
-      objects
-        .map((obj) => {
-          const children = objects.filter((o) => o.parentId === obj.id);
-          return { ...obj, children };
-        })
-        .filter((obj) => obj.children.length > 0),
-    [objects]
+  const handleStageClick = useCallback(
+    (e: KonvaEventObject<MouseEvent>) => {
+      const clickedOnEmpty = e.target === e.target.getStage();
+      if (clickedOnEmpty) {
+        handleSelect(null, false);
+      }
+    },
+    [handleSelect]
   );
-
-  // take root type as a rect
-  const root = objects.find((obj) => obj.type === "root") as ShapeObject;
-  const ungroupedObjects = objects.filter((obj) => obj.parentId === null);
 
   const _handleDragObjectStart = useCallback(
     (e: KonvaEventObject<DragEvent>, object: EditorObjectBase) => {
-      handleSelect(object.id);
+      handleSelect(object.id, false);
       setDraggedObject(object);
     },
     [handleSelect]
@@ -140,59 +140,366 @@ export const Canvas: React.FC<CanvasProps> = ({
     []
   );
 
-  console.log(draggedObject);
+  const renderNode = (node: EditorObjectBase) => {
+    console.log(node);
+    if (!node.visible) return null;
 
-  const renderObject = (obj: EditorObjectBase) => {
-    if (!obj.visible) return null;
-    if (obj.type === "image") {
-      return (
-        <ImageObjectComponent
-          key={obj.id}
-          object={obj as ImageObject}
-          isSelected={editorState.selectedIds.includes(obj.id)}
-          onSelect={() => handleSelect(obj.id)}
-          onChange={(newProps) => _handleObjectChange(obj.id, newProps)}
-          onDragStart={_handleDragObjectStart}
-          onDragEnd={_handleDragObjectEnd}
-          onDragMove={_handleDragObjectMove}
-        />
-      );
+    switch (node.type) {
+      case "group":
+        return (
+          <Group
+            key={node.id}
+            x={(node as GroupObject).position.x}
+            y={(node as GroupObject).position.y}
+            width={(node as GroupObject).size.width}
+            height={(node as GroupObject).size.height}
+            rotation={(node as GroupObject).rotation}
+            opacity={(node as GroupObject).opacity}
+            draggable
+            onClick={(e) => {
+              e.cancelBubble = true;
+              handleSelect(node.id, e.evt.metaKey || e.evt.ctrlKey);
+            }}
+            onDragStart={(e) => _handleDragObjectStart(e, node as GroupObject)}
+            onDragEnd={_handleDragObjectEnd}
+            onDragMove={(e) => _handleDragObjectMove(e, node as GroupObject)}
+            onTransformEnd={(e: KonvaEventObject<Event>) => {
+              const node = e.target;
+              const scaleX = node.scaleX();
+              const scaleY = node.scaleY();
+
+              // Reset scale and update size
+              node.scaleX(1);
+              node.scaleY(1);
+
+              const newProps: Partial<GroupObject> = {
+                position: {
+                  x: node.x(),
+                  y: node.y(),
+                },
+                size: {
+                  width: node.width() * scaleX,
+                  height: node.height() * scaleY,
+                },
+                rotation: node.rotation(),
+              };
+
+              handleObjectChange(node.id, newProps);
+
+              // Update children positions proportionally
+              const children = objects.filter(
+                (child) => child.parentId === node.id
+              );
+              children.forEach((child) => {
+                const relativeX = child.position.x / node.size.width;
+                const relativeY = child.position.y / node.size.height;
+                handleObjectChange(child.id, {
+                  position: {
+                    x: newProps.size!.width * relativeX,
+                    y: newProps.size!.height * relativeY,
+                  },
+                  size: {
+                    width: child.size.width * scaleX,
+                    height: child.size.height * scaleY,
+                  },
+                });
+              });
+            }}
+            onContextMenu={(e) => handleContextMenu(e, node.id)}
+          >
+            {node.children.map((child: TreeNode) => renderNode(child))}
+            {editorState.selectedIds.includes(node.id) && (
+              <Transformer
+                boundBoxFunc={(oldBox, newBox) => {
+                  const minSize = 5;
+                  if (newBox.width < minSize || newBox.height < minSize) {
+                    return oldBox;
+                  }
+                  return newBox;
+                }}
+              />
+            )}
+          </Group>
+        );
+
+      case "image":
+        return (
+          <ImageObjectComponent
+            key={node.id}
+            object={node as ImageObject}
+            isSelected={editorState.selectedIds.includes(node.id)}
+            onSelect={(e) =>
+              handleSelect(node.id, e.evt?.metaKey || e.evt?.ctrlKey)
+            }
+            onChange={(newProps) => _handleObjectChange(node.id, newProps)}
+            onDragStart={_handleDragObjectStart}
+            onDragEnd={_handleDragObjectEnd}
+            onDragMove={_handleDragObjectMove}
+            onContextMenu={(e) => handleContextMenu(e, node.id)}
+          />
+        );
+
+      case "text":
+        return (
+          <TextObjectComponent
+            key={node.id}
+            object={node as TextObject}
+            isSelected={editorState.selectedIds.includes(node.id)}
+            onSelect={(e) =>
+              handleSelect(node.id, e.evt?.metaKey || e.evt?.ctrlKey)
+            }
+            onChange={(newProps) => _handleObjectChange(node.id, newProps)}
+            onDragStart={_handleDragObjectStart}
+            onDragEnd={_handleDragObjectEnd}
+            onDragMove={handleDragMove}
+            onContextMenu={(e) => handleContextMenu(e, node.id)}
+          />
+        );
+
+      case "shape":
+        return (
+          <ShapeObjectComponent
+            key={node.id}
+            object={node as ShapeObject}
+            isSelected={editorState.selectedIds.includes(node.id)}
+            onSelect={(
+              e: KonvaEventObject<MouseEvent> | KonvaEventObject<TouchEvent>
+            ) => handleSelect(node.id, e.evt?.metaKey || e.evt?.ctrlKey)}
+            onChange={(newProps) => _handleObjectChange(node.id, newProps)}
+            onDragStart={_handleDragObjectStart}
+            onDragEnd={_handleDragObjectEnd}
+            onContextMenu={(e) => handleContextMenu(e, node.id)}
+          />
+        );
+
+      default:
+        return null;
     }
-    if (obj.type === "text") {
-      return (
-        <TextObjectComponent
-          key={obj.id}
-          object={obj as TextObject}
-          isSelected={editorState.selectedIds.includes(obj.id)}
-          onSelect={() => handleSelect(obj.id)}
-          onChange={(newProps) => _handleObjectChange(obj.id, newProps)}
-          onDragStart={_handleDragObjectStart}
-          onDragEnd={_handleDragObjectEnd}
-          onDragMove={handleDragMove}
-        />
-      );
-    }
-    if (obj.type === "shape") {
-      return (
-        <ShapeObjectComponent
-          key={obj.id}
-          object={obj as ShapeObject}
-          isSelected={editorState.selectedIds.includes(obj.id)}
-          onSelect={() => handleSelect(obj.id)}
-          onChange={(newProps) => _handleObjectChange(obj.id, newProps)}
-          onDragStart={_handleDragObjectStart}
-          onDragEnd={_handleDragObjectEnd}
-        />
-      );
-    }
-    return null;
   };
 
-  const objectsToRender = useMemo(() => {
-    return [...groupedObjects, ...ungroupedObjects].sort(
-      (a, b) => a.zIndex - b.zIndex
+  const handleContextMenu = useCallback(
+    (e: KonvaEventObject<MouseEvent>, objectId?: string) => {
+      e.evt.preventDefault();
+      const stage = e.target.getStage();
+      if (!stage) return;
+
+      const position = {
+        x: e.evt.clientX,
+        y: e.evt.clientY,
+      };
+
+      setContextMenu({
+        show: true,
+        position,
+        objectId: objectId || null,
+      });
+    },
+    []
+  );
+
+  const getContextMenuItems = useCallback((): ContextMenuItem[] => {
+    const selectedObjects = objects.filter((obj) =>
+      editorState.selectedIds.includes(obj.id)
     );
-  }, [groupedObjects, ungroupedObjects]);
+
+    return [
+      {
+        label: "Cut",
+        action: handleCut,
+        shortcut: "⌘X",
+        disabled: !selectedObjects.length,
+      },
+      {
+        label: "Copy",
+        action: handleCopy,
+        shortcut: "⌘C",
+        disabled: !selectedObjects.length,
+      },
+      {
+        label: "Paste",
+        action: handlePaste,
+        shortcut: "⌘V",
+        disabled: !localStorage.getItem("clipboard"),
+      },
+      { label: "", separator: true, action: () => {} },
+      {
+        label: "Bring to Front",
+        action: handleBringToFront,
+        shortcut: "⌘]",
+        disabled: !selectedObjects.length,
+      },
+      {
+        label: "Bring Forward",
+        action: handleBringForward,
+        shortcut: "⌘⇧]",
+        disabled: !selectedObjects.length,
+      },
+      {
+        label: "Send Backward",
+        action: handleSendBackward,
+        shortcut: "⌘⇧[",
+        disabled: !selectedObjects.length,
+      },
+      {
+        label: "Send to Back",
+        action: handleSendToBack,
+        shortcut: "⌘[",
+        disabled: !selectedObjects.length,
+      },
+      { label: "", separator: true, action: () => {} },
+      {
+        label: "Group",
+        action: handleGroup,
+        shortcut: "⌘G",
+        disabled: selectedObjects.length < 2,
+      },
+      {
+        label: "Ungroup",
+        action: handleUngroup,
+        shortcut: "⌘⇧G",
+        disabled: !selectedObjects.some((obj) => obj.type === "group"),
+      },
+    ];
+  }, [
+    editorState.selectedIds,
+    objects,
+    handleCut,
+    handleCopy,
+    handlePaste,
+    handleGroup,
+    handleUngroup,
+    handleBringToFront,
+    handleBringForward,
+    handleSendBackward,
+    handleSendToBack,
+  ]);
+
+  const handleStageMouseDown = useCallback(
+    (e: KonvaEventObject<MouseEvent>) => {
+      if (editorState.tool === "select") return;
+
+      // Get position relative to stage
+      const stage = stageRef.current;
+      if (!stage) return;
+
+      const point = stage.getPointerPosition();
+      if (!point) return;
+
+      // Convert to scene coordinates
+      const position = {
+        x: (point.x - stage.x()) / stage.scaleX(),
+        y: (point.y - stage.y()) / stage.scaleY(),
+      };
+
+      setEditorState((prev) => ({
+        ...prev,
+        isDrawing: true,
+        drawStartPosition: position,
+      }));
+
+      setDrawPreview({
+        type: editorState.tool,
+        position,
+        size: { width: 0, height: 0 },
+      });
+    },
+    [editorState.tool, stageRef, setEditorState]
+  );
+
+  const handleStageMouseMove = useCallback(
+    (e: KonvaEventObject<MouseEvent>) => {
+      if (
+        !editorState.isDrawing ||
+        !editorState.drawStartPosition ||
+        !drawPreview
+      )
+        return;
+
+      const stage = stageRef.current;
+      if (!stage) return;
+
+      const point = stage.getPointerPosition();
+      if (!point) return;
+
+      // Convert to scene coordinates
+      const currentPosition = {
+        x: (point.x - stage.x()) / stage.scaleX(),
+        y: (point.y - stage.y()) / stage.scaleY(),
+      };
+
+      // Calculate size based on drag distance
+      const size = {
+        width: Math.abs(currentPosition.x - editorState.drawStartPosition.x),
+        height: Math.abs(currentPosition.y - editorState.drawStartPosition.y),
+      };
+
+      // Update preview
+      setDrawPreview((prev) =>
+        prev
+          ? {
+              ...prev,
+              size,
+            }
+          : null
+      );
+    },
+    [
+      editorState.isDrawing,
+      editorState.drawStartPosition,
+      stageRef,
+      drawPreview,
+    ]
+  );
+
+  const handleStageMouseUp = useCallback(() => {
+    if (
+      !editorState.isDrawing ||
+      !drawPreview ||
+      !editorState.drawStartPosition
+    )
+      return;
+
+    // Create the new object based on the preview
+    const baseObject = {
+      position: editorState.drawStartPosition,
+      size: drawPreview.size,
+      parentId: editorState.selectedLayerId || null,
+    };
+
+    switch (editorState.tool) {
+      case "shape":
+        handleAddObject({
+          ...baseObject,
+          type: "shape",
+          shapeType: editorState.selectedShapeType || "rectangle",
+          fill: "#cccccc",
+          stroke: "#000000",
+          strokeWidth: 2,
+        });
+        break;
+      case "text":
+        handleAddObject({
+          ...baseObject,
+          type: "text",
+          text: "Double click to edit",
+          fontSize: 20,
+          fontFamily: "Arial",
+          fill: "#000000",
+        });
+        break;
+    }
+
+    // Reset drawing state
+    setEditorState((prev: EditorState) => ({
+      ...prev,
+      isDrawing: false,
+      drawStartPosition: null,
+      tool: "select", // Return to select tool after drawing
+    }));
+    setDrawPreview(null);
+  }, [editorState, drawPreview, handleAddObject, setEditorState]);
+
+  console.log(objects);
 
   return (
     <div
@@ -204,6 +511,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           backgroundSize: `${20 * editorState.zoom}px ${
             20 * editorState.zoom
           }px`,
+          cursor: editorState.tool === "select" ? "grab" : "crosshair",
         } as React.CSSProperties
       }
     >
@@ -217,67 +525,86 @@ export const Canvas: React.FC<CanvasProps> = ({
           x={stagePosition.x}
           y={stagePosition.y}
           draggable={
-            editorState.tool === "select" && !editorState.selectedIds.length
+            editorState.tool === "select" &&
+            !editorState.selectedIds.length &&
+            !editorState.isDrawing
           }
           onWheel={handleWheel}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
           onDragMove={handleDragMove}
-          onClick={handleBackgroundClick}
+          onClick={handleStageClick}
+          onContextMenu={handleContextMenu}
+          onMouseDown={handleStageMouseDown}
+          onMouseMove={handleStageMouseMove}
+          onMouseUp={handleStageMouseUp}
         >
           <Layer>
-            {root && (
-              <>
-                <Text
-                  x={root.position.x}
-                  y={root.position.y - 24}
-                  text={`${currentFormat.name} ${currentFormat.aspectRatio} (${currentFormat.width}x${currentFormat.height}px)`}
-                  fontSize={20}
-                  fontFamily="Arial"
-                />
-                <Rect
-                  x={root.position.x}
-                  y={root.position.y}
-                  width={root.size.width}
-                  height={root.size.height}
-                  fill={root.fill}
-                  opacity={root.opacity}
-                  stroke={root.stroke}
-                  strokeWidth={root.strokeWidth}
-                  name={root.name}
-                  id={root.id}
-                  type={root.type}
-                  parentId={root.parentId}
-                  visible={root.visible}
-                />
-              </>
-            )}
-            {objectsToRender.map((obj) => {
-              if (obj.children.length > 0) {
-                return (
-                  <Group
-                    key={obj.id}
-                    x={obj.position.x}
-                    y={obj.position.y}
-                    width={obj.size.width}
-                    height={obj.size.height}
-                    fill={obj.fill}
-                    opacity={obj.opacity}
-                  >
-                    {obj.children.map((child) => renderObject(child))}
-                  </Group>
-                );
-              }
-              return renderObject(obj);
-            })}
+            <Rect
+              x={0}
+              y={0}
+              width={currentFormat.width}
+              height={currentFormat.height}
+              fill={editorState.backgroundColor}
+              opacity={editorState.backgroundOpacity}
+            />
+          </Layer>
+          {objects
+            .filter((obj) => obj.type === "layer")
+            .map((layer) => (
+              <Layer
+                key={layer.id}
+                opacity={layer.opacity}
+                visible={layer.visible}
+              >
+                {layer.children.map((child) => renderNode(child))}
+              </Layer>
+            ))}
+          <Layer>
             <Guidelines
               draggedObject={draggedObject}
               objects={objects}
               snapThreshold={50}
             />
           </Layer>
+          {/* Preview layer */}
+          {drawPreview && (
+            <Layer>
+              {drawPreview.type === "shape" && (
+                <Rect
+                  x={drawPreview.position.x}
+                  y={drawPreview.position.y}
+                  width={drawPreview.size.width}
+                  height={drawPreview.size.height}
+                  fill="#cccccc"
+                  stroke="#000000"
+                  strokeWidth={2}
+                  opacity={0.6}
+                />
+              )}
+              {drawPreview.type === "text" && (
+                <Rect
+                  x={drawPreview.position.x}
+                  y={drawPreview.position.y}
+                  width={drawPreview.size.width}
+                  height={drawPreview.size.height}
+                  stroke="#000000"
+                  strokeWidth={1}
+                  dash={[5, 5]}
+                  opacity={0.6}
+                />
+              )}
+            </Layer>
+          )}
         </Stage>
       </div>
+      {contextMenu.show && (
+        <ContextMenu
+          items={getContextMenuItems()}
+          position={contextMenu.position}
+          onClose={() => setContextMenu((prev) => ({ ...prev, show: false }))}
+        />
+      )}
     </div>
   );
 };
