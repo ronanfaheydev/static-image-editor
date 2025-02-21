@@ -465,17 +465,19 @@ export const Canvas: React.FC<CanvasProps> = ({
       size: drawPreview.size,
       parentId: editorState.selectedLayerId || null,
     };
-
+    const shapeType =
+      editorState.selectedShapeType || ("rectangle" as ShapeType);
     switch (editorState.tool) {
       case "shape":
         handleAddObject({
           ...baseObject,
           type: "shape",
-          shapeType: editorState.selectedShapeType || "rectangle",
+          shapeType,
+          name: `${shapeType} ${objects.length + 1}`,
           fill: "#cccccc",
           stroke: "#000000",
           strokeWidth: 2,
-        });
+        } as ShapeObject);
         break;
       case "text":
         handleAddObject({
@@ -485,7 +487,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           fontSize: 20,
           fontFamily: "Arial",
           fill: "#000000",
-        });
+        } as TextObject);
         break;
     }
 
@@ -497,9 +499,7 @@ export const Canvas: React.FC<CanvasProps> = ({
       tool: "select", // Return to select tool after drawing
     }));
     setDrawPreview(null);
-  }, [editorState, drawPreview, handleAddObject, setEditorState]);
-
-  console.log(objects);
+  }, [editorState, drawPreview, handleAddObject, setEditorState, objects]);
 
   return (
     <div
@@ -548,6 +548,15 @@ export const Canvas: React.FC<CanvasProps> = ({
               fill={editorState.backgroundColor}
               opacity={editorState.backgroundOpacity}
             />
+            {/* Root objects */}
+            {objects
+              .filter((obj) => obj.type === "root")
+              .map((root) =>
+                root.children.map((child) => {
+                  console.log(child);
+                  return renderNode(child);
+                })
+              )}
           </Layer>
           {objects
             .filter((obj) => obj.type === "layer")

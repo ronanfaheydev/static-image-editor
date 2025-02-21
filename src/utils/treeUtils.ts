@@ -35,22 +35,22 @@ export const removeNodeFromParent = (
 
 export const insertNode = (
   tree: TreeNode[],
-  node: TreeNode,
+  newNode: TreeNode,
   parentId?: string | null
 ): TreeNode[] => {
   if (parentId) {
     const parentNode = findNodeById(tree, parentId);
     if (!parentNode) return tree;
 
-    return tree.map((node) => {
-      if (node.id === parentId) {
-        return { ...node, children: [...node.children, node] };
+    return tree.map((currentNode) => {
+      if (currentNode.id === parentId) {
+        return { ...currentNode, children: [...currentNode.children, newNode] };
       }
-      return node;
+      return currentNode;
     });
   }
 
-  return [...tree, node];
+  return [...tree, newNode];
 };
 
 export const addNodeToParent = (
@@ -89,4 +89,74 @@ export const updateNodeInTree = (
       children: updateNodeInTree(node.children, nodeId, updates),
     };
   });
+};
+
+export const moveNodeToIndex = (
+  tree: TreeNode[],
+  nodeId: string,
+  targetIndex: number
+): TreeNode[] => {
+  const node = findNodeById(tree, nodeId);
+  if (!node) return tree;
+
+  // Get all siblings (nodes with same parent)
+  const siblings = tree.filter((obj) => obj.parentId === node.parentId);
+  const otherNodes = tree.filter((obj) => obj.parentId !== node.parentId);
+
+  // Remove node from current position
+  const currentIndex = siblings.findIndex((n) => n.id === nodeId);
+  if (currentIndex === -1) return tree;
+
+  // Create new array with node at target position
+  const reorderedSiblings = [...siblings];
+  reorderedSiblings.splice(currentIndex, 1);
+  reorderedSiblings.splice(targetIndex, 0, node);
+
+  return [...otherNodes, ...reorderedSiblings];
+};
+
+export const moveNodeToFront = (
+  tree: TreeNode[],
+  nodeId: string
+): TreeNode[] => {
+  const node = findNodeById(tree, nodeId);
+  if (!node) return tree;
+
+  const siblings = tree.filter((obj) => obj.parentId === node.parentId);
+  return moveNodeToIndex(tree, nodeId, siblings.length - 1);
+};
+
+export const moveNodeToBack = (
+  tree: TreeNode[],
+  nodeId: string
+): TreeNode[] => {
+  return moveNodeToIndex(tree, nodeId, 0);
+};
+
+export const moveNodeForward = (
+  tree: TreeNode[],
+  nodeId: string
+): TreeNode[] => {
+  const node = findNodeById(tree, nodeId);
+  if (!node) return tree;
+
+  const siblings = tree.filter((obj) => obj.parentId === node.parentId);
+  const currentIndex = siblings.findIndex((n) => n.id === nodeId);
+
+  if (currentIndex === siblings.length - 1) return tree; // Already at front
+  return moveNodeToIndex(tree, nodeId, currentIndex + 1);
+};
+
+export const moveNodeBackward = (
+  tree: TreeNode[],
+  nodeId: string
+): TreeNode[] => {
+  const node = findNodeById(tree, nodeId);
+  if (!node) return tree;
+
+  const siblings = tree.filter((obj) => obj.parentId === node.parentId);
+  const currentIndex = siblings.findIndex((n) => n.id === nodeId);
+
+  if (currentIndex === 0) return tree; // Already at back
+  return moveNodeToIndex(tree, nodeId, currentIndex - 1);
 };

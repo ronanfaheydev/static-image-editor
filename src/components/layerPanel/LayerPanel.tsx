@@ -1,6 +1,11 @@
 import React, { useState, useCallback, useMemo } from "react";
-import { EditorObjectBase, FormatEditMode, LayerObject } from "../types/editor";
-import { Format, DEFAULT_FORMATS } from "../types/format";
+import {
+  EditorObjectBase,
+  FormatEditMode,
+  LayerObject,
+  TreeNode,
+} from "../../types/editor";
+import { Format, DEFAULT_FORMATS } from "../../types/format";
 import {
   DndContext,
   closestCenter,
@@ -11,23 +16,19 @@ import {
   DragEndEvent,
   DragOverEvent,
   DragStartEvent,
-  Modifier,
   DragOverlay,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-  useSortable,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import "./LayerPanel.scss";
 import {
   findNodeById,
   removeNodeFromParent,
   addNodeToParent,
   updateNodeInTree,
-} from "../utils/treeUtils";
+  insertNode,
+} from "../../utils/treeUtils";
+import { LayerContainer } from "./layerItem/LayerContainer";
+import { SortableLayerItem } from "./layerItem/SortableLayerItem";
 
 interface LayerPanelProps {
   objects: EditorObjectBase[];
@@ -47,197 +48,6 @@ interface LayerPanelProps {
   setObjects: React.Dispatch<React.SetStateAction<EditorObjectBase[]>>;
   onDelete: (id: string) => void;
 }
-
-interface SortableLayerItemProps {
-  object: EditorObjectBase;
-  isSelected: boolean;
-  onSelect: (id: string, multiSelect: boolean) => void;
-  onVisibilityChange: (id: string, visible: boolean) => void;
-  onNameChange: (id: string, name: string) => void;
-  onDelete: (id: string) => void;
-  depth?: number;
-  objects: EditorObjectBase[];
-}
-
-const SortableLayerItem: React.FC<SortableLayerItemProps> = ({
-  object,
-  isSelected,
-  onSelect,
-  onVisibilityChange,
-  onNameChange,
-  onDelete,
-  depth = 0,
-  objects,
-}) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-    isOver,
-  } = useSortable({
-    id: object.id,
-    data: {
-      type: object.type,
-      parentId: object.parentId,
-    },
-  });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-    marginLeft: `${depth * 20}px`,
-    backgroundColor: isOver && object.type === "group" ? "#e6f7ff" : undefined,
-    border:
-      isOver && object.type === "group" ? "1px dashed #1890ff" : undefined,
-    position: "relative" as const,
-    zIndex: isDragging ? 999 : undefined,
-  };
-
-  const [isExpanded, setIsExpanded] = useState(true);
-
-  const handleClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onSelect(object.id, e.metaKey || e.ctrlKey);
-  };
-
-  return (
-    <div
-      className={`layer-item ${isSelected ? "selected" : ""}`}
-      style={style}
-      onClick={handleClick}
-    >
-      {/* Drag Handle */}
-      <div
-        className="drag-handle"
-        ref={setNodeRef}
-        {...attributes}
-        {...listeners}
-      >
-        ⋮⋮
-      </div>
-
-      {/* Group Expand/Collapse Button */}
-      {object.type === "group" && (
-        <button
-          className="toggle-group"
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsExpanded(!isExpanded);
-          }}
-        >
-          {isExpanded ? "▼" : "▶"}
-        </button>
-      )}
-
-      {/* Visibility Toggle */}
-      <button
-        className={`visibility-toggle ${object.visible ? "visible" : ""}`}
-        onClick={(e) => {
-          e.stopPropagation();
-          onVisibilityChange(object.id, !object.visible);
-        }}
-      >
-        {object.visible ? (
-          <span className="visible-icon" />
-        ) : (
-          <span className="hidden-icon" />
-        )}
-      </button>
-
-      {/* Layer Name */}
-      <input
-        className="layer-name"
-        value={object.name}
-        onChange={(e) => onNameChange(object.id, e.target.value)}
-        onClick={(e) => e.stopPropagation()}
-      />
-
-      {/* Delete Button */}
-      {object.type !== "root" && (
-        <button
-          className="delete-button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(object.id);
-          }}
-        >
-          ×
-        </button>
-      )}
-    </div>
-  );
-};
-
-interface LayerContainerProps {
-  layer: LayerObject | null;
-  isRoot?: boolean;
-  objects: EditorObjectBase[];
-  selectedIds: string[];
-  onSelect: (id: string, multiSelect: boolean) => void;
-  onVisibilityChange: (id: string, visible: boolean) => void;
-  onNameChange: (id: string, name: string) => void;
-  onDelete: (id: string) => void;
-}
-
-const LayerContainer: React.FC<LayerContainerProps> = ({
-  layer,
-  isRoot,
-  objects,
-  selectedIds,
-  onSelect,
-  onVisibilityChange,
-  onNameChange,
-  onDelete,
-}) => {
-  const containerItems = objects.filter((obj) =>
-    isRoot
-      ? // For root layer, only show direct objects (no layers or groups)
-        !obj.parentId &&
-        obj.type !== "layer" &&
-        obj.type !== "group" &&
-        obj.type !== "root"
-      : // For other layers, show all direct children
-        obj.parentId === layer?.id
-  );
-
-  return (
-    <div className={`layer-container ${isRoot ? "root-layer" : ""}`}>
-      {layer && (
-        <SortableLayerItem
-          object={layer}
-          isSelected={selectedIds.includes(layer.id)}
-          onSelect={onSelect}
-          onVisibilityChange={onVisibilityChange}
-          onNameChange={onNameChange}
-          onDelete={onDelete}
-          objects={objects}
-          depth={0}
-        />
-      )}
-      <SortableContext items={containerItems.map((obj) => obj.id)}>
-        <div className="layer-items">
-          {containerItems.map((obj) => (
-            <SortableLayerItem
-              key={obj.id}
-              object={obj}
-              isSelected={selectedIds.includes(obj.id)}
-              onSelect={onSelect}
-              onVisibilityChange={onVisibilityChange}
-              onNameChange={onNameChange}
-              onDelete={onDelete}
-              objects={objects}
-              depth={1}
-            />
-          ))}
-        </div>
-      </SortableContext>
-    </div>
-  );
-};
 
 export const LayerPanel: React.FC<LayerPanelProps> = ({
   objects,
@@ -267,32 +77,6 @@ export const LayerPanel: React.FC<LayerPanelProps> = ({
   );
 
   const [activeId, setActiveId] = useState<string | null>(null);
-
-  const organizedObjects = useMemo(() => {
-    const rootLayer = objects.find((obj) => obj.type === "root");
-    const customLayers = objects.filter((obj) => obj.type === "layer");
-
-    // Get objects that belong to each layer
-    const layerContents = customLayers.map((layer) => ({
-      ...layer,
-      children: objects
-        .filter((obj) => obj.parentId === layer.id)
-        .sort((a, b) => a.zIndex - b.zIndex),
-    }));
-
-    // Get root layer objects (no parentId and not layers)
-    const rootObjects = objects
-      .filter(
-        (obj) => !obj.parentId && obj.type !== "layer" && obj.type !== "root"
-      )
-      .sort((a, b) => a.zIndex - b.zIndex);
-
-    return {
-      rootLayer,
-      layers: layerContents,
-      rootObjects,
-    };
-  }, [objects]);
 
   const handleAddLayer = useCallback(() => {
     const newLayer: LayerObject = {
@@ -330,14 +114,8 @@ export const LayerPanel: React.FC<LayerPanelProps> = ({
 
     // If dragging over a layer, prepare to move into that layer
     if (overObject.type === "layer" && activeObject.type !== "layer") {
-      setObjects((prev) =>
-        prev.map((obj) => {
-          if (obj.id === activeObject.id) {
-            return { ...obj, parentId: overObject.id };
-          }
-          return obj;
-        })
-      );
+      // removeNodeFromParent(objects, activeObject.id);
+      setObjects(addNodeToParent(objects, activeObject.id, overObject.id));
     }
   };
 
@@ -356,12 +134,12 @@ export const LayerPanel: React.FC<LayerPanelProps> = ({
         const newTree = removeNodeFromParent(prev, active.id.toString());
 
         // If dropping onto a layer or group, add as child
-        if (overNode.type === "layer" || overNode.type === "group") {
-          return addNodeToParent(
-            newTree,
-            active.id.toString(),
-            over.id.toString()
-          );
+        if (
+          overNode.type === "layer" ||
+          overNode.type === "group" ||
+          overNode.type === "root"
+        ) {
+          return insertNode(newTree, activeNode, overNode.id);
         }
 
         // If dropping between items, reorder within parent
@@ -389,32 +167,6 @@ export const LayerPanel: React.FC<LayerPanelProps> = ({
     },
     [setObjects]
   );
-
-  const renderTreeItem = (node: EditorObjectBase, depth: number = 0) => {
-    return (
-      <React.Fragment key={node.id}>
-        <SortableLayerItem
-          object={node}
-          isSelected={selectedIds.includes(node.id)}
-          onSelect={onSelect}
-          onVisibilityChange={onVisibilityChange}
-          onNameChange={onNameChange}
-          onDelete={onDelete}
-          depth={depth}
-          objects={objects}
-        />
-        {node.type === "group" &&
-          node.isExpanded &&
-          node.children.length > 0 && (
-            <div className="children" style={{ marginLeft: 20 }}>
-              {node.children.map((child: TreeNode) =>
-                renderTreeItem(child, depth + 1)
-              )}
-            </div>
-          )}
-      </React.Fragment>
-    );
-  };
 
   return (
     <div className="layer-panel">
@@ -455,7 +207,6 @@ export const LayerPanel: React.FC<LayerPanelProps> = ({
                   objects.find((obj) => obj.type === "root") as LayerObject
                 }
                 isRoot={true}
-                objects={objects}
                 selectedIds={selectedIds}
                 onSelect={onSelect}
                 onVisibilityChange={onVisibilityChange}
@@ -470,7 +221,6 @@ export const LayerPanel: React.FC<LayerPanelProps> = ({
                   <LayerContainer
                     key={layer.id}
                     layer={layer as LayerObject}
-                    objects={objects}
                     selectedIds={selectedIds}
                     onSelect={onSelect}
                     onVisibilityChange={onVisibilityChange}
@@ -482,9 +232,18 @@ export const LayerPanel: React.FC<LayerPanelProps> = ({
               {/* Show drag overlay */}
               {activeId && (
                 <DragOverlay>
-                  <div className="dragging-item">
-                    {objects.find((obj) => obj.id === activeId)?.name}
-                  </div>
+                  <SortableLayerItem
+                    object={
+                      (objects.find(
+                        (obj) => obj.id === activeId
+                      ) as EditorObjectBase) || {}
+                    }
+                    isSelected={selectedIds.includes(activeId)}
+                    onSelect={onSelect}
+                    onVisibilityChange={onVisibilityChange}
+                    onNameChange={onNameChange}
+                    onDelete={onDelete}
+                  />
                 </DragOverlay>
               )}
             </DndContext>

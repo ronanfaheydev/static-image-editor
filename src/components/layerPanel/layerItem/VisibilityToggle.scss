@@ -1,0 +1,24 @@
+.visibility-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .visible-icon {
+    &::before {
+      content: "👁";
+    }
+  }
+
+  .hidden-icon {
+    &::before {
+      content: "👁‍🗨";
+      opacity: 0.5;
+    }
+  }
+}

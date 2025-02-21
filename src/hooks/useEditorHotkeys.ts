@@ -187,3 +187,99 @@ export const useEditorHotkeys = ({
     [handleUngroup]
   );
 };
+
+/*
+
+
+  // Add keyboard shortcuts
+  useHotkeys("cmd+x", handleCut, [handleCut]);
+  useHotkeys("cmd+c", handleCopy, [handleCopy]);
+  useHotkeys("cmd+v", handlePaste, [handlePaste]);
+  // Add keyboard shortcuts for group/ungroup
+  useHotkeys(
+    "cmd+g",
+    (e) => {
+      e.preventDefault();
+      handleGroup();
+    },
+    [handleGroup]
+  );
+
+  useHotkeys(
+    "cmd+shift+g",
+    (e) => {
+      e.preventDefault();
+      handleUngroup();
+    },
+    [handleUngroup]
+  );
+
+  // Add these near other keyboard shortcuts
+  useHotkeys(
+    "cmd+]",
+    (e) => {
+      e.preventDefault();
+      handleBringToFront();
+    },
+    [handleBringToFront]
+  );
+
+  useHotkeys(
+    "cmd+shift+]",
+    (e) => {
+      e.preventDefault();
+      handleBringForward();
+    },
+    [handleBringForward]
+  );
+
+  useHotkeys(
+    "cmd+[",
+    (e) => {
+      e.preventDefault();
+      handleSendToBack();
+    },
+    [handleSendToBack]
+  );
+
+  useHotkeys(
+    "cmd+shift+[",
+    (e) => {
+      e.preventDefault();
+      handleSendBackward();
+    },
+    [handleSendBackward]
+  );
+
+  // Add these with your other keyboard shortcuts
+  useHotkeys(
+    "v",
+    () => {
+      setEditorState((prev) => ({ ...prev, tool: "select" }));
+    },
+    []
+  );
+
+  useHotkeys(
+    "t",
+    () => {
+      setEditorState((prev) => ({ ...prev, tool: "text" }));
+    },
+    []
+  );
+
+  useHotkeys(
+    "r",
+    () => {
+      setEditorState((prev) => ({ ...prev, tool: "shape" }));
+    },
+    []
+  );
+
+  useHotkeys(
+    "i",
+    () => {
+      setEditorState((prev) => ({ ...prev, tool: "image" }));
+    },
+    []
+  );*/
