@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from "react";
-import { EditorObjectBase, EditorState } from "../types/editor";
+import { EditorObjectBase, EditorState, ImageObject } from "../types/editor";
 import "./PropertyPanel.scss";
 import { Accordion } from "./common/Accordion";
 import {
@@ -306,7 +306,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
               <div className="property-section">
                 <div className="preview-container">
                   <img
-                    src={selectedObjects[0].src}
+                    src={(selectedObjects[0] as ImageObject).src}
                     alt="Preview"
                     style={{
                       maxWidth: "100%",
@@ -326,7 +326,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
             selectedObjects.length === 1 &&
             selectedObjects[0] && (
               <CropModal
-                src={selectedObjects[0].src}
+                src={(selectedObjects[0] as ImageObject).src}
                 onClose={() => setShowCropModal(false)}
                 onCrop={(croppedImageUrl) => {
                   onChange(selectedObjects[0].id, {

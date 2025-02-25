@@ -19,7 +19,7 @@ export interface PropertyConfig {
   max?: number;
   step?: number;
   options?: { value: string; label: string }[];
-  defaultValue?: any;
+  defaultValue?: string | number | boolean | undefined;
   group: string;
 }
 
@@ -430,7 +430,7 @@ export const getPropertyValue = (
   propertyId: string
 ) => {
   const parts = propertyId.split(".");
-  let value: any = objects.length > 0 ? objects[0] : {};
+  let value: Partial<EditorObjectBase> = objects.length > 0 ? objects[0] : {};
   for (const part of parts) {
     value = value[part];
   }
@@ -440,10 +440,10 @@ export const getPropertyValue = (
 export const setPropertyValue = (
   object: EditorObjectBase,
   propertyId: string,
-  value: any
+  value: string | number | boolean | undefined
 ): Partial<EditorObjectBase> => {
   const parts = propertyId.split(".");
-  const result: any = {};
+  const result: Partial<EditorObjectBase> = {};
   let current = result;
 
   for (let i = 0; i < parts.length - 1; i++) {

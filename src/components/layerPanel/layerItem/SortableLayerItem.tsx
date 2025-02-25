@@ -23,7 +23,6 @@ export const SortableLayerItem: React.FC<SortableLayerItemProps> = ({
   onDelete,
   depth = 0,
 }) => {
-  console.log(object);
   const {
     attributes,
     listeners,

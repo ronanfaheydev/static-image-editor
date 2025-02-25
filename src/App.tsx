@@ -487,8 +487,8 @@ function App() {
   // Add these functions near other handlers
   const handleCut = useCallback(() => {
     setObjects((objects) => {
-      const selectedObjects = objects.filter((obj) =>
-        editorState.selectedIds.includes(obj.id)
+      const selectedObjects = editorState.selectedIds.map((id) =>
+        findNodeById(objects, id)
       );
       localStorage.setItem("clipboard", JSON.stringify(selectedObjects));
 
@@ -503,7 +503,12 @@ function App() {
   const handleCopy = useCallback(() => {
     const selectedNodes = editorState.selectedIds
       .map((id) => findNodeById(objects, id))
-      .filter((node): node is EditorObjectBase => node !== null);
+      .filter((node): node is EditorObjectBase => node !== null)
+      .map((node) => ({
+        ...node,
+        id: `${node.id}-copy`,
+        name: `${node.name}-copy`,
+      }));
 
     if (selectedNodes.length > 0) {
       localStorage.setItem("clipboard", JSON.stringify(selectedNodes));

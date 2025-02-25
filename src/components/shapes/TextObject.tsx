@@ -3,17 +3,26 @@ import type Konva from "konva";
 import { TextObject } from "../../types/editor";
 import { useCallback, useEffect, useRef } from "react";
 import "./TextObject.scss";
-import { KonvaEventObject } from "konva/lib/Node";
+import { KonvaEventObject, Node, NodeConfig } from "konva/lib/Node";
 import { Box } from "konva/lib/shapes/Transformer";
 
 interface TextObjectProps {
   object: TextObject;
   isSelected: boolean;
-  onSelect: (e: KonvaEventObject<Event>) => void;
+  onSelect: (
+    e:
+      | KonvaEventObject<MouseEvent, Node<NodeConfig>>
+      | KonvaEventObject<TouchEvent, Node<NodeConfig>>
+  ) => void;
   onChange: (newProps: Partial<TextObject>) => void;
   onDragStart?: (e: KonvaEventObject<DragEvent>, object: TextObject) => void;
   onDragEnd?: (e: KonvaEventObject<DragEvent>, object: TextObject) => void;
   onDragMove?: (e: KonvaEventObject<DragEvent>, object: TextObject) => void;
+  onContextMenu?: (
+    e:
+      | KonvaEventObject<MouseEvent, Node<NodeConfig>>
+      | KonvaEventObject<TouchEvent, Node<NodeConfig>>
+  ) => void;
 }
 
 export const TextObjectComponent = ({

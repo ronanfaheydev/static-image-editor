@@ -1,5 +1,5 @@
-import React, { useMemo, useRef, useState, useCallback } from "react";
-import { Stage, Layer, Rect, Group, Text, Transformer } from "react-konva";
+import React, { useRef, useState, useCallback } from "react";
+import { Stage, Layer, Rect, Group, Transformer } from "react-konva";
 import {
   EditorState,
   EditorObjectBase,
@@ -15,7 +15,7 @@ import {
 import { ImageObjectComponent } from "./shapes/ImageObject";
 import { TextObjectComponent } from "./shapes/TextObject";
 import { ShapeObjectComponent } from "./shapes/ShapeObject";
-import { KonvaEventObject } from "konva/lib/Node";
+import { KonvaEventObject, Node, NodeConfig } from "konva/lib/Node";
 import { useContainerSize } from "../hooks/useContainerSize";
 import "./Canvas.scss";
 import type Konva from "konva";
@@ -23,6 +23,7 @@ import { Guidelines } from "./shapes/Guidelines";
 import { Format } from "../types/format";
 import { ContextMenu, ContextMenuItem } from "./common/ContextMenu";
 import { ROOT_ID } from "../constants";
+import { findNodeById } from "../utils/treeUtils";
 
 interface CanvasProps {
   editorState: EditorState;
@@ -77,8 +78,6 @@ export const Canvas: React.FC<CanvasProps> = ({
   const { width: CANVAS_WIDTH, height: CANVAS_HEIGHT } =
     useContainerSize(containerRef);
 
-  console.log(objects);
-
   const [draggedObject, setDraggedObject] = useState<EditorObjectBase | null>(
     null
   );
@@ -88,11 +87,15 @@ export const Canvas: React.FC<CanvasProps> = ({
     show: boolean;
     position: { x: number; y: number };
     objectId: string | null;
+    selectedIds?: string[];
   }>({
     show: false,
     position: { x: 0, y: 0 },
     objectId: null,
+    selectedIds: [],
   });
+  const contextMenuRef = useRef(contextMenu);
+  contextMenuRef.current = contextMenu;
 
   const [drawPreview, setDrawPreview] = useState<{
     type: "text" | "shape" | "image";
@@ -135,14 +138,14 @@ export const Canvas: React.FC<CanvasProps> = ({
   );
 
   const _handleDragObjectStart = useCallback(
-    (e: KonvaEventObject<DragEvent>, object: EditorObjectBase) => {
+    (_: KonvaEventObject<DragEvent>, object: EditorObjectBase) => {
       handleSelect(object.id, false);
       setDraggedObject(object);
     },
     [handleSelect]
   );
 
-  const _handleDragObjectEnd = useCallback((e: KonvaEventObject<DragEvent>) => {
+  const _handleDragObjectEnd = useCallback(() => {
     setDraggedObject(null);
   }, []);
 
@@ -153,9 +156,32 @@ export const Canvas: React.FC<CanvasProps> = ({
     []
   );
 
+  const _handleSelect = useCallback(
+    (
+      node: EditorObjectBase,
+      e:
+        | KonvaEventObject<MouseEvent, Node<NodeConfig>>
+        | KonvaEventObject<TouchEvent, Node<NodeConfig>>
+    ) => {
+      if (contextMenuRef.current.show) {
+        return;
+      }
+      e.evt.preventDefault();
+      e.cancelBubble = true;
+      handleSelect(
+        node.id,
+        (e.evt as Event & { metaKey?: boolean })?.metaKey ||
+          (e.evt as Event & { ctrlKey?: boolean })?.ctrlKey ||
+          false
+      );
+    },
+    [handleSelect]
+  );
+
   const renderNode = (node: EditorObjectBase) => {
-    console.log(node);
     if (!node.visible) return null;
+
+    const _onSelect = _handleSelect.bind(null, node);
 
     switch (node.type) {
       case "group":
@@ -169,10 +195,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             rotation={(node as GroupObject).rotation}
             opacity={(node as GroupObject).opacity}
             draggable
-            onClick={(e) => {
-              e.cancelBubble = true;
-              handleSelect(node.id, e.evt.metaKey || e.evt.ctrlKey);
-            }}
+            onSelect={_onSelect}
             onDragStart={(e) => _handleDragObjectStart(e, node as GroupObject)}
             onDragEnd={_handleDragObjectEnd}
             onDragMove={(e) => _handleDragObjectMove(e, node as GroupObject)}
@@ -241,9 +264,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             key={node.id}
             object={node as ImageObject}
             isSelected={editorState.selectedIds.includes(node.id)}
-            onSelect={(e) =>
-              handleSelect(node.id, e.evt?.metaKey || e.evt?.ctrlKey)
-            }
+            onSelect={_onSelect}
             onChange={(newProps) => _handleObjectChange(node.id, newProps)}
             onDragStart={_handleDragObjectStart}
             onDragEnd={_handleDragObjectEnd}
@@ -258,9 +279,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             key={node.id}
             object={node as TextObject}
             isSelected={editorState.selectedIds.includes(node.id)}
-            onSelect={(e) =>
-              handleSelect(node.id, e.evt?.metaKey || e.evt?.ctrlKey)
-            }
+            onSelect={_onSelect}
             onChange={(newProps) => _handleObjectChange(node.id, newProps)}
             onDragStart={_handleDragObjectStart}
             onDragEnd={_handleDragObjectEnd}
@@ -275,9 +294,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             key={node.id}
             object={node as ShapeObject}
             isSelected={editorState.selectedIds.includes(node.id)}
-            onSelect={(
-              e: KonvaEventObject<MouseEvent> | KonvaEventObject<TouchEvent>
-            ) => handleSelect(node.id, e.evt?.metaKey || e.evt?.ctrlKey)}
+            onSelect={_onSelect}
             onChange={(newProps) => _handleObjectChange(node.id, newProps)}
             onDragStart={_handleDragObjectStart}
             onDragEnd={_handleDragObjectEnd}
@@ -291,28 +308,37 @@ export const Canvas: React.FC<CanvasProps> = ({
   };
 
   const handleContextMenu = useCallback(
-    (e: KonvaEventObject<MouseEvent>, objectId?: string) => {
+    (
+      e:
+        | KonvaEventObject<MouseEvent, Node<NodeConfig>>
+        | KonvaEventObject<TouchEvent, Node<NodeConfig>>,
+      objectId?: string
+    ) => {
       e.evt.preventDefault();
+      // stop bubbling
+      e.evt.stopPropagation();
+      e.cancelBubble = true;
       const stage = e.target.getStage();
       if (!stage) return;
 
       const position = {
-        x: e.evt.clientX,
-        y: e.evt.clientY,
+        x: "clientX" in e.evt ? e.evt.clientX : e.evt.touches[0].clientX,
+        y: "clientY" in e.evt ? e.evt.clientY : e.evt.touches[0].clientY,
       };
 
       setContextMenu({
         show: true,
         position,
         objectId: objectId || null,
+        selectedIds: editorState.selectedIds,
       });
     },
-    []
+    [editorState.selectedIds]
   );
 
   const getContextMenuItems = useCallback((): ContextMenuItem[] => {
-    const selectedObjects = objects.filter((obj) =>
-      editorState.selectedIds.includes(obj.id)
+    const selectedObjects = editorState.selectedIds.map(
+      (id) => findNodeById(objects, id) as EditorObjectBase
     );
 
     return [
@@ -387,90 +413,87 @@ export const Canvas: React.FC<CanvasProps> = ({
     handleSendToBack,
   ]);
 
-  const handleStageMouseDown = useCallback(
-    (e: KonvaEventObject<MouseEvent>) => {
-      if (editorState.tool === "select") return;
+  const handleStageMouseDown = useCallback(() => {
+    console.log("stage mousedown");
+    if (editorState.tool === "select") return;
 
-      // Get position relative to stage
-      const stage = stageRef.current;
-      if (!stage) return;
+    // Get position relative to stage
+    const stage = stageRef.current;
+    if (!stage) return;
 
-      const point = stage.getPointerPosition();
-      if (!point) return;
+    const point = stage.getPointerPosition();
+    if (!point) return;
 
-      // Convert to scene coordinates
-      const position = {
-        x: (point.x - stage.x()) / stage.scaleX(),
-        y: (point.y - stage.y()) / stage.scaleY(),
-      };
+    // Convert to scene coordinates
+    const position = {
+      x: (point.x - stage.x()) / stage.scaleX(),
+      y: (point.y - stage.y()) / stage.scaleY(),
+    };
 
-      setEditorState((prev) => ({
-        ...prev,
-        isDrawing: true,
-        drawStartPosition: position,
-      }));
+    setEditorState((prev) => ({
+      ...prev,
+      isDrawing: true,
+      drawStartPosition: position,
+    }));
 
-      setDrawPreview({
-        type: editorState.tool,
-        position,
-        size: { width: 0, height: 0 },
-      });
-    },
-    [editorState.tool, stageRef, setEditorState]
-  );
+    setDrawPreview({
+      type: editorState.tool,
+      position,
+      size: { width: 0, height: 0 },
+    });
+  }, [editorState.tool, stageRef, setEditorState]);
 
-  const handleStageMouseMove = useCallback(
-    (e: KonvaEventObject<MouseEvent>) => {
-      if (
-        !editorState.isDrawing ||
-        !editorState.drawStartPosition ||
-        !drawPreview
-      )
-        return;
+  const handleStageMouseMove = useCallback(() => {
+    if (
+      !editorState.isDrawing ||
+      !editorState.drawStartPosition ||
+      !drawPreview
+    )
+      return;
 
-      const stage = stageRef.current;
-      if (!stage) return;
+    const stage = stageRef.current;
+    if (!stage) return;
 
-      const point = stage.getPointerPosition();
-      if (!point) return;
+    const point = stage.getPointerPosition();
+    if (!point) return;
 
-      // Convert to scene coordinates
-      const currentPosition = {
-        x: (point.x - stage.x()) / stage.scaleX(),
-        y: (point.y - stage.y()) / stage.scaleY(),
-      };
+    // Convert to scene coordinates
+    const currentPosition = {
+      x: (point.x - stage.x()) / stage.scaleX(),
+      y: (point.y - stage.y()) / stage.scaleY(),
+    };
 
-      // Calculate size based on drag distance
-      const size = {
-        width: Math.abs(currentPosition.x - editorState.drawStartPosition.x),
-        height: Math.abs(currentPosition.y - editorState.drawStartPosition.y),
-      };
+    // Calculate size based on drag distance
+    const size = {
+      width: Math.abs(currentPosition.x - editorState.drawStartPosition.x),
+      height: Math.abs(currentPosition.y - editorState.drawStartPosition.y),
+    };
 
-      // Update preview
-      setDrawPreview((prev) =>
-        prev
-          ? {
-              ...prev,
-              size,
-            }
-          : null
-      );
-    },
-    [
-      editorState.isDrawing,
-      editorState.drawStartPosition,
-      stageRef,
-      drawPreview,
-    ]
-  );
+    // Update preview
+    setDrawPreview((prev) =>
+      prev
+        ? {
+            ...prev,
+            size,
+          }
+        : null
+    );
+  }, [
+    editorState.isDrawing,
+    editorState.drawStartPosition,
+    stageRef,
+    drawPreview,
+  ]);
 
   const handleStageMouseUp = useCallback(() => {
+    console.log("stage mouseup");
     if (
       !editorState.isDrawing ||
       !drawPreview ||
       !editorState.drawStartPosition
-    )
+    ) {
       return;
+    }
 
     // Create the new object based on the preview
     const baseObject = {
@@ -499,7 +522,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           text: "Double click to edit",
           fontSize: 20,
           fontFamily: "Arial",
-          fill: "#000000",
+          fontColor: "#000000",
         } as TextObject);
         break;
     }
@@ -566,12 +589,7 @@ export const Canvas: React.FC<CanvasProps> = ({
             {/* Root objects */}
             {objects
               .filter((obj) => obj.type === "root")
-              .map((root) =>
-                root.children.map((child) => {
-                  console.log(child);
-                  return renderNode(child);
-                })
-              )}
+              .map((root) => root.children.map((child) => renderNode(child)))}
           </Layer>
           {objects
             .filter((obj) => obj.type === "layer")

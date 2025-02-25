@@ -4,19 +4,24 @@ import { ShapeObject } from "../../types/editor";
 import { useCallback, useEffect, useRef } from "react";
 import { CurveShape } from "./CurveShape";
 import "./ShapeObject.scss";
-import { KonvaEventObject } from "konva/lib/Node";
+import { KonvaEventObject, Node, NodeConfig } from "konva/lib/Node";
 import { Box } from "konva/lib/types";
 
 interface ShapeObjectProps {
   object: ShapeObject;
   isSelected: boolean;
   onSelect: (
-    e: KonvaEventObject<MouseEvent> | KonvaEventObject<TouchEvent>
+    e:
+      | KonvaEventObject<MouseEvent, Node<NodeConfig>>
+      | KonvaEventObject<TouchEvent, Node<NodeConfig>>
   ) => void;
   onChange: (newProps: Partial<ShapeObject>) => void;
-  onDragStart?: (e: KonvaEventObject<DragEvent>) => void;
-  onDragEnd?: (e: KonvaEventObject<DragEvent>) => void;
-  onContextMenu?: (e: KonvaEventObject<MouseEvent>) => void;
+  onDragStart?: (e: KonvaEventObject<DragEvent>, object: ShapeObject) => void;
+  onDragEnd?: (e: KonvaEventObject<DragEvent>, object: ShapeObject) => void;
+  onContextMenu?: (
+    e: KonvaEventObject<MouseEvent>,
+    object: ShapeObject
+  ) => void;
 }
 
 export const ShapeObjectComponent = ({
@@ -114,25 +119,22 @@ export const ShapeObjectComponent = ({
 
   const handleDragStart = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
-      onDragStart?.(e);
+      onDragStart?.(e, object);
     },
-    [onDragStart]
+    [onDragStart, object]
   );
 
   const handleDragEnd = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
-      onChange(
-        {
-          position: {
-            x: e.target.x(),
-            y: e.target.y(),
-          },
+      onChange({
+        position: {
+          x: e.target.x(),
+          y: e.target.y(),
         },
-        true // isDropping = true
-      );
-      onDragEnd?.(e);
+      });
+      onDragEnd?.(e, object);
     },
-    [onChange, onDragEnd]
+    [onChange, onDragEnd, object]
   );
 
   return (

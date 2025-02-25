@@ -4,12 +4,16 @@ import type Konva from "konva";
 import { ImageObject } from "../../types/editor";
 import useImage from "use-image";
 import "./ImageObject.scss";
-import { KonvaEventObject } from "konva/lib/Node";
+import { KonvaEventObject, Node, NodeConfig } from "konva/lib/Node";
 
 interface ImageObjectProps {
   object: ImageObject;
   isSelected: boolean;
-  onSelect: (e: KonvaEventObject<Event>) => void;
+  onSelect: (
+    e:
+      | KonvaEventObject<MouseEvent, Node<NodeConfig>>
+      | KonvaEventObject<TouchEvent, Node<NodeConfig>>
+  ) => void;
   onChange: (changes: Partial<ImageObject>) => void;
   onDragStart?: (
     e: Konva.KonvaEventObject<DragEvent>,

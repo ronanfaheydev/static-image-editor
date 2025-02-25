@@ -41,11 +41,17 @@ export interface TreeNode {
   isExpanded?: boolean;
   position: Position;
   size: Size;
+  src?: string;
   rotation: number;
   opacity: number;
   zIndex: number;
   parentId: string | null;
   blendMode?: BlendMode;
+  borderRadius?: number;
+  borderWidth?: number;
+  borderColor?: string;
+  strokeColor?: string;
+  strokeWidth?: number;
 }
 
 export type EditorObjectBase = TreeNode;

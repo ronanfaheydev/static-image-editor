@@ -1,12 +1,16 @@
 import React from "react";
 import { Line, Circle, Group } from "react-konva";
 import { ShapeObject } from "../../types/editor";
-import { KonvaEventObject } from "konva/lib/Node";
+import { KonvaEventObject, Node, NodeConfig } from "konva/lib/Node";
 
 interface CurveShapeProps {
   object: ShapeObject;
   isSelected: boolean;
-  onSelect: () => void;
+  onSelect: (
+    e:
+      | KonvaEventObject<MouseEvent, Node<NodeConfig>>
+      | KonvaEventObject<TouchEvent, Node<NodeConfig>>
+  ) => void;
   onChange: (changes: Partial<ShapeObject>) => void;
 }
 
@@ -30,6 +34,8 @@ export const CurveShape: React.FC<CurveShapeProps> = ({
         curveConfig: {
           ...object.curveConfig,
           points: newPoints,
+          tension: tension,
+          closed: object.curveConfig?.closed || false,
         },
       });
     };
