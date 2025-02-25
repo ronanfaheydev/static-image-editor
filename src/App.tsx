@@ -504,11 +504,21 @@ function App() {
     const selectedNodes = editorState.selectedIds
       .map((id) => findNodeById(objects, id))
       .filter((node): node is EditorObjectBase => node !== null)
-      .map((node) => ({
-        ...node,
-        id: `${node.id}-copy`,
-        name: `${node.name}-copy`,
-      }));
+      .map((node) => {
+        // Add a copy suffix to the name, check it doesn't already exist
+        const copied = {
+          ...node,
+          id: `${node.id}-copy`,
+          name: `${node.name}-copy`,
+        };
+
+        if (findNodeById(objects, copied.id)) {
+          copied.id = `${node.id}-copy-${Date.now()}`;
+          copied.name = `${node.name}-copy`;
+        }
+
+        return copied;
+      });
 
     if (selectedNodes.length > 0) {
       localStorage.setItem("clipboard", JSON.stringify(selectedNodes));
