@@ -440,8 +440,14 @@ export const Canvas: React.FC<CanvasProps> = ({
       type: editorState.tool,
       position,
       size: { width: 0, height: 0 },
+      shapeType: editorState.selectedShapeType,
     });
-  }, [editorState.tool, stageRef, setEditorState]);
+  }, [
+    editorState.tool,
+    stageRef,
+    setEditorState,
+    editorState.selectedShapeType,
+  ]);
 
   const handleStageMouseMove = useCallback(() => {
     if (
@@ -486,7 +492,6 @@ export const Canvas: React.FC<CanvasProps> = ({
   ]);
 
   const handleStageMouseUp = useCallback(() => {
-    console.log("stage mouseup");
     if (
       !editorState.isDrawing ||
       !drawPreview ||
@@ -613,15 +618,30 @@ export const Canvas: React.FC<CanvasProps> = ({
           {drawPreview && (
             <Layer>
               {drawPreview.type === "shape" && (
-                <Rect
-                  x={drawPreview.position.x}
-                  y={drawPreview.position.y}
-                  width={drawPreview.size.width}
-                  height={drawPreview.size.height}
-                  fill="#cccccc"
-                  stroke="#000000"
-                  strokeWidth={2}
-                  opacity={0.6}
+                <ShapeObjectComponent
+                  object={{
+                    ...drawPreview,
+                    fill: "#cccccc",
+                    stroke: "#000000",
+                    strokeWidth: 2,
+                    opacity: 0.6,
+                    id: "new",
+                    blendMode: "normal",
+                    visible: true,
+                    shapeType: drawPreview.shapeType!,
+                    type: "shape",
+                    rotation: 0,
+                    zIndex: 0,
+                    parentId: null,
+                    name: "New Shape",
+                    children: [],
+                  }}
+                  isSelected={false}
+                  onSelect={() => {}}
+                  onChange={() => {}}
+                  onDragStart={() => {}}
+                  onDragEnd={() => {}}
+                  onContextMenu={() => {}}
                 />
               )}
               {drawPreview.type === "text" && (

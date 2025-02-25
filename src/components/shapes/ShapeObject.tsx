@@ -33,6 +33,7 @@ export const ShapeObjectComponent = ({
   onDragEnd,
   onContextMenu,
 }: ShapeObjectProps) => {
+  console.log(object);
   const shapeRef = useRef<Konva.Shape>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
 
