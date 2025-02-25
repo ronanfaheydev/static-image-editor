@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { EditorObjectBase, EditorState } from "../types/editor";
 import "./PropertyPanel.scss";
 import { Accordion } from "./common/Accordion";
@@ -12,9 +12,11 @@ import {
 import { ResizeOptions } from "./common/ResizeOptions";
 import { CropModal } from "./modals/CropModal";
 import { AlignmentOptions } from "./common/AlignmentOptions";
+import { findNodeById } from "../utils/treeUtils";
+import { ROOT_ID } from "../constants";
 
 interface PropertyPanelProps {
-  selectedObject: EditorObjectBase | null;
+  selectedIds: string[];
   objects: EditorObjectBase[];
   onChange: (id: string, changes: Partial<EditorObjectBase>) => void;
   editorState: EditorState;
@@ -23,7 +25,7 @@ interface PropertyPanelProps {
 }
 
 export const PropertyPanel: React.FC<PropertyPanelProps> = ({
-  selectedObject,
+  selectedIds,
   objects,
   onChange,
   editorState,
@@ -40,8 +42,33 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
     setEditorState(newState);
   };
 
+  // Wrap getSelectedObject
+  const getSelectedObjects = useCallback(
+    (selectedIds: string[]) => {
+      if (selectedIds.length === 0) return [];
+      const ret = [];
+      for (const id of selectedIds) {
+        const obj = findNodeById(objects, id);
+        if (obj) {
+          ret.push(obj);
+        }
+      }
+      return ret;
+    },
+    [objects]
+  );
+
+  const selectedObjects = useMemo(() => {
+    return getSelectedObjects(selectedIds);
+  }, [getSelectedObjects, selectedIds]);
+
   const renderPropertyInput = useCallback(
     (config: PropertyConfig, value: any, _onChange: (value: any) => void) => {
+      // TODO: intersection of object properties and config
+      const isOnlyImageType = selectedObjects[0]?.type === "image";
+      const selectedObject = selectedObjects[0];
+      if (!selectedObject) return null;
+
       switch (config.type) {
         case "number":
           return (
@@ -84,7 +111,7 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
             </select>
           );
         case "resize":
-          if (selectedObject?.type !== "image") return null;
+          if (!isOnlyImageType) return null;
           return (
             <ResizeOptions
               object={selectedObject}
@@ -109,47 +136,48 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
           return (
             <AlignmentOptions
               onAlign={(alignment) => {
-                if (!selectedObject) return;
+                selectedObjects.forEach((selectedObject) => {
+                  if (!selectedObject) return;
 
-                const rootObject = objects.find(
-                  (obj) => obj.id === "canvas-background"
-                );
-                if (!rootObject) return;
+                  const rootObject = findNodeById(objects, ROOT_ID);
+                  if (!rootObject) return;
 
-                const newPosition = { ...selectedObject.position };
+                  const newPosition = { ...selectedObject.position };
 
-                switch (alignment) {
-                  case "left":
-                    newPosition.x = rootObject.position.x;
-                    break;
-                  case "center":
-                    newPosition.x =
-                      rootObject.position.x +
-                      (rootObject.size.width - selectedObject.size.width) / 2;
-                    break;
-                  case "right":
-                    newPosition.x =
-                      rootObject.position.x +
-                      rootObject.size.width -
-                      selectedObject.size.width;
-                    break;
-                  case "top":
-                    newPosition.y = rootObject.position.y;
-                    break;
-                  case "middle":
-                    newPosition.y =
-                      rootObject.position.y +
-                      (rootObject.size.height - selectedObject.size.height) / 2;
-                    break;
-                  case "bottom":
-                    newPosition.y =
-                      rootObject.position.y +
-                      rootObject.size.height -
-                      selectedObject.size.height;
-                    break;
-                }
+                  switch (alignment) {
+                    case "left":
+                      newPosition.x = rootObject.position.x;
+                      break;
+                    case "center":
+                      newPosition.x =
+                        rootObject.position.x +
+                        (rootObject.size.width - selectedObject.size.width) / 2;
+                      break;
+                    case "right":
+                      newPosition.x =
+                        rootObject.position.x +
+                        rootObject.size.width -
+                        selectedObject.size.width;
+                      break;
+                    case "top":
+                      newPosition.y = rootObject.position.y;
+                      break;
+                    case "middle":
+                      newPosition.y =
+                        rootObject.position.y +
+                        (rootObject.size.height - selectedObject.size.height) /
+                          2;
+                      break;
+                    case "bottom":
+                      newPosition.y =
+                        rootObject.position.y +
+                        rootObject.size.height -
+                        selectedObject.size.height;
+                      break;
+                  }
 
-                onChange(selectedObject.id, { position: newPosition });
+                  onChange(selectedObject.id, { position: newPosition });
+                });
               }}
             />
           );
@@ -157,19 +185,28 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
           return null;
       }
     },
-    [selectedObject, getCanvasSize, onChange, objects]
+    [selectedObjects, getCanvasSize, onChange, objects]
   );
 
   const renderObjectProperties = useCallback(
     (
-      object: EditorObjectBase
-      // _onChange: (id: string, changes: Partial<EditorObjectBase>) => void
+      objects: EditorObjectBase[],
+      onChange: (id: string, changes: Partial<EditorObjectBase>) => void
     ) => {
-      const properties = OBJECT_PROPERTIES[object.type];
-      if (!properties) return null;
+      const allProperties = objects.map(
+        (object) => OBJECT_PROPERTIES[object.type]
+      );
+      const commonProperties = allProperties.reduce((acc, properties) => {
+        if (!properties) return acc;
+        return acc.filter((p) => properties.some((prop) => prop.id === p.id));
+      }, allProperties[0] || []);
+
+      if (!commonProperties) return null;
 
       return PROPERTY_GROUPS.map((group) => {
-        const groupProperties = properties.filter((p) => p.group === group.id);
+        const groupProperties = commonProperties.filter(
+          (p) => p.group === group.id
+        );
         if (groupProperties.length === 0) return null;
 
         return (
@@ -184,12 +221,14 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                   <label>{prop.label}</label>
                   {renderPropertyInput(
                     prop,
-                    getPropertyValue(object, prop.id),
+                    getPropertyValue(objects, prop.id),
                     (value) =>
-                      onChange(
-                        object.id,
-                        setPropertyValue(object, prop.id, value)
-                      )
+                      objects.forEach((object) => {
+                        onChange(
+                          object.id,
+                          setPropertyValue(object, prop.id, value)
+                        );
+                      })
                   )}
                 </div>
               ))}
@@ -198,10 +237,10 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
         );
       });
     },
-    [renderPropertyInput, onChange]
+    [renderPropertyInput]
   );
 
-  if (!selectedObject) {
+  if (!selectedObjects?.length) {
     return (
       <div className="property-panel">
         <h3>Canvas Properties</h3>
@@ -256,43 +295,46 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
   return (
     <div className="property-panel">
       <h3>Properties</h3>
-      {!selectedObject ? (
+      {!selectedObjects?.length ? (
         <p className="no-selection">No object selected</p>
       ) : (
         <>
-          {renderObjectProperties(selectedObject, onChange)}
+          {renderObjectProperties(selectedObjects, onChange)}
 
-          {selectedObject.type === "image" && (
-            <div className="property-section">
-              <div className="preview-container">
-                <img
-                  src={selectedObject.src}
-                  alt="Preview"
-                  style={{
-                    maxWidth: "100%",
-                    borderRadius: selectedObject?.borderRadius || 0,
-                    border: selectedObject?.borderWidth
-                      ? `${selectedObject.borderWidth}px solid ${
-                          selectedObject.borderColor || "#000"
-                        }`
-                      : "none",
-                  }}
-                />
+          {selectedObjects.length === 1 &&
+            selectedObjects[0].type === "image" && (
+              <div className="property-section">
+                <div className="preview-container">
+                  <img
+                    src={selectedObjects[0].src}
+                    alt="Preview"
+                    style={{
+                      maxWidth: "100%",
+                      borderRadius: selectedObjects[0]?.borderRadius || 0,
+                      border: selectedObjects[0]?.borderWidth
+                        ? `${selectedObjects[0].borderWidth}px solid ${
+                            selectedObjects[0].borderColor || "#000"
+                          }`
+                        : "none",
+                    }}
+                  />
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {showCropModal && selectedObject?.type === "image" && (
-            <CropModal
-              src={selectedObject.src}
-              onClose={() => setShowCropModal(false)}
-              onCrop={(croppedImageUrl) => {
-                onChange(selectedObject.id, {
-                  src: croppedImageUrl,
-                });
-              }}
-            />
-          )}
+          {showCropModal &&
+            selectedObjects.length === 1 &&
+            selectedObjects[0] && (
+              <CropModal
+                src={selectedObjects[0].src}
+                onClose={() => setShowCropModal(false)}
+                onCrop={(croppedImageUrl) => {
+                  onChange(selectedObjects[0].id, {
+                    src: croppedImageUrl,
+                  });
+                }}
+              />
+            )}
         </>
       )}
       <div className="panel-resize-handle" />

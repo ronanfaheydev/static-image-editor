@@ -3,6 +3,7 @@ import { Stage } from "konva/lib/Stage";
 import { Format } from "../../types/format";
 import { EditorObjectBase } from "../../types/editor";
 import "./SaveDialog.scss";
+import { DialogKey } from "../../types/project";
 
 interface SaveDialogProps {
   isOpen: boolean;
@@ -10,7 +11,7 @@ interface SaveDialogProps {
   stage: Stage | null;
   currentFormat: Format;
   objects: EditorObjectBase[];
-  openDialog: (dialogName: string) => void;
+  openDialog: (dialogName: DialogKey) => void;
 }
 
 export const SaveDialog: React.FC<SaveDialogProps> = ({

@@ -26,7 +26,7 @@ import { ContextMenu, ContextMenuItem } from "./common/ContextMenu";
 interface CanvasProps {
   editorState: EditorState;
   setEditorState: React.Dispatch<React.SetStateAction<EditorState>>;
-  stageRef: React.RefObject<Konva.Stage>;
+  stageRef: React.RefObject<Konva.Stage | null>;
   objects: EditorObjectBase[];
   currentFormat: Format;
   stagePosition: { x: number; y: number };
@@ -75,6 +75,8 @@ export const Canvas: React.FC<CanvasProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const { width: CANVAS_WIDTH, height: CANVAS_HEIGHT } =
     useContainerSize(containerRef);
+
+  console.log(objects);
 
   const [draggedObject, setDraggedObject] = useState<EditorObjectBase | null>(
     null

@@ -13,6 +13,7 @@ import Speedometer from "../../assets/icons/speedometer.svg";
 import Select from "../../assets/icons/select.svg";
 
 import "./Toolbar.scss";
+import { DialogKey } from "../../types/project";
 
 interface ToolbarProps {
   editorState: EditorState;
@@ -22,7 +23,7 @@ interface ToolbarProps {
   canUndo: boolean;
   canRedo: boolean;
   lastModified?: Date;
-  openDialog: (dialogName: string) => void;
+  openDialog: (dialogName: DialogKey) => void;
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -80,7 +81,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
             editorState.tool === "image" ? "active" : ""
           }`}
           onClick={() => {
-            handleToolSelect("image");
             openDialog("mediaLibrary");
           }}
           title="Image (I)"

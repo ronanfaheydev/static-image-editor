@@ -72,7 +72,9 @@ export interface TextObject extends TreeNode {
   text: string;
   fontSize: number;
   fontFamily: string;
-  fill: string;
+  fontColor: string;
+  stroke: string;
+  strokeWidth: number;
   children: never[];
   blendMode: BlendMode;
 }

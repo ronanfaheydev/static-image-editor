@@ -6,7 +6,7 @@ interface UseEditorHotkeysProps {
   handleCut: () => void;
   handleCopy: () => void;
   handlePaste: () => void;
-  handleDelete: () => void;
+  handleDelete: (id: string) => void;
   handleUndo: () => void;
   handleRedo: () => void;
   handleBringToFront: () => void;

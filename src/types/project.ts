@@ -1,6 +1,8 @@
-import { EditorObjectBase } from "./editor";
+import { EditorObjectBase, FormatEditMode } from "./editor";
 import { Format } from "./format";
 import { MediaItem } from "./media";
+import type Konva from "konva";
+import { Template } from "./template";
 
 export interface Project {
   id: string;
@@ -37,7 +39,12 @@ export type EditorObjectKey = keyof EditorObjectBase;
 
 // Add at the top with other interfaces
 export interface DialogState {
-  preview: { isOpen: boolean; props: Record<string, unknown> };
+  preview: {
+    isOpen: boolean;
+    props: Record<string, unknown>;
+    open: () => void;
+    close: () => void;
+  };
   export: {
     isOpen: boolean;
     props: {
@@ -45,6 +52,8 @@ export interface DialogState {
       currentFormat: Format;
       objects: EditorObjectBase[];
     };
+    open: () => void;
+    close: () => void;
   };
   save: {
     isOpen: boolean;
@@ -54,32 +63,44 @@ export interface DialogState {
       customFormats: Format[];
       objects: EditorObjectBase[];
     };
+    open: () => void;
+    close: () => void;
   };
   load: {
     isOpen: boolean;
     props: { onLoad?: (project: Project) => void };
+    open: () => void;
+    close: () => void;
   };
   exportJSON: {
     isOpen: boolean;
     props: { project?: Project };
+    open: () => void;
+    close: () => void;
   };
   templateBrowser: {
     isOpen: boolean;
     props: { onSelect?: (template: Template) => void };
+    open: () => void;
+    close: () => void;
   };
   saveTemplate: {
     isOpen: boolean;
     props: {
       objects?: EditorObjectBase[];
       currentFormat?: Format;
-      onSaved?: () => void;
+      onSaved?: (template: Template) => void;
     };
+    open: () => void;
+    close: () => void;
   };
   mediaLibrary: {
     isOpen: boolean;
     props: {
       onSelect: (mediaItem: MediaItem) => void;
     };
+    open: () => void;
+    close: () => void;
   };
 }
 
@@ -89,5 +110,4 @@ export type DialogKey = keyof DialogState;
 export interface DialogProps {
   onClose: () => void;
   stage?: Konva.Stage;
-  // ... other props
 }

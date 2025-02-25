@@ -40,6 +40,8 @@ import {
   moveNodeBackward,
 } from "./utils/treeUtils";
 import { useEditorHotkeys } from "./hooks/useEditorHotkeys";
+import { useDialogs } from "./hooks/useDialogs";
+import { ROOT_ID } from "./constants";
 
 function App() {
   const mainContentRef = useRef<HTMLDivElement | null>(null);
@@ -66,6 +68,9 @@ function App() {
   );
   const [customFormats, setCustomFormats] = useState<Format[]>([]);
 
+  // need to use a ref here
+  const closeDialogRef = useRef<(key?: DialogKey) => void>(() => {});
+
   // Replace objects state with history
   const {
     state: objects,
@@ -77,7 +82,7 @@ function App() {
     lastModified,
   } = useHistory<EditorObjectBase[]>([
     {
-      id: "canvas-background",
+      id: ROOT_ID,
       type: "root",
       name: "Canvas",
       visible: true,
@@ -94,30 +99,12 @@ function App() {
       fill: editorState.backgroundColor,
       stroke: "transparent",
       strokeWidth: 0,
+      zIndex: 0,
+      parentId: null,
+      backgroundColor: "#ffffff",
+      backgroundOpacity: 1,
     } as RootObject,
   ]);
-
-  // Add this function before the return statement
-  const closeDialogByKey = useCallback((key: DialogKey) => {
-    setDialogs((prev) => ({
-      ...prev,
-      [key]: {
-        isOpen: false,
-        props: prev[key].props, // Preserve props
-      },
-    }));
-  }, []);
-
-  // Add keyboard shortcuts
-  useHotkeys("ctrl+z, cmd+z", (e) => {
-    e.preventDefault();
-    undo();
-  });
-
-  useHotkeys("ctrl+shift+z, cmd+shift+z", (e) => {
-    e.preventDefault();
-    redo();
-  });
 
   // Handle window resize
   useEffect(() => {
@@ -134,7 +121,7 @@ function App() {
     (id: string | null, multiSelect: boolean) => {
       setEditorState((prev) => {
         // If selecting a layer, update selectedLayerId
-        const selectedObject = id ? objects.find((obj) => obj.id === id) : null;
+        const selectedObject = id ? findNodeById(objects, id) : null;
         const isLayer = selectedObject?.type === "layer";
 
         return {
@@ -160,151 +147,6 @@ function App() {
       setObjects((prev) => updateNodeInTree(prev, id, changes));
     },
     [setObjects]
-  );
-
-  // Handle image upload
-  const handleImageUpload = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const centerX =
-            (containerWidth - currentFormat.width) / 2 +
-            currentFormat.width / 2;
-          const centerY =
-            (containerHeight - currentFormat.height) / 2 +
-            currentFormat.height / 2;
-
-          const newImage: ImageObject = {
-            id: `image-${Date.now()}`,
-            type: "image",
-            src: event.target?.result as string,
-            position: { x: centerX - 100, y: centerY - 100 },
-            size: { width: 200, height: 200 },
-            rotation: 0,
-            opacity: 1,
-            visible: true,
-            name: file.name,
-            zIndex: objects.length,
-            blendMode: "normal",
-            parentId: editorState.selectedLayerId || null,
-            children: [],
-            isExpanded: true,
-          };
-
-          setObjects((prev) => [...prev, newImage]);
-          setEditorState((prev) => ({
-            ...prev,
-            selectedIds: [newImage.id],
-          }));
-        };
-        reader.readAsDataURL(file);
-      }
-    },
-    [
-      containerWidth,
-      containerHeight,
-      currentFormat,
-      objects.length,
-      setObjects,
-      setEditorState,
-      editorState.selectedLayerId,
-    ]
-  );
-
-  // Handle adding text
-  const handleAddText = useCallback(() => {
-    const centerX =
-      (containerWidth - currentFormat.width) / 2 + currentFormat.width / 2;
-    const centerY =
-      (containerHeight - currentFormat.height) / 2 + currentFormat.height / 2;
-
-    const newText: TextObject = {
-      id: `text-${Date.now()}`,
-      type: "text",
-      text: "Double click to edit",
-      position: { x: centerX - 100, y: centerY - 15 },
-      size: { width: 200, height: 30 },
-      fontSize: 20,
-      fontFamily: "Arial",
-      fill: "#000000",
-      rotation: 0,
-      opacity: 1,
-      visible: true,
-      name: "New Text",
-      zIndex: objects.length,
-      blendMode: "normal",
-      parentId: editorState.selectedLayerId || null,
-      children: [],
-      isExpanded: true,
-    };
-    setObjects((prev) => [...prev, newText]);
-  }, [
-    containerWidth,
-    containerHeight,
-    currentFormat,
-    objects.length,
-    setObjects,
-    editorState.selectedLayerId,
-  ]);
-
-  // Wrap getSelectedObject
-  const getSelectedObject = useCallback(() => {
-    if (editorState.selectedIds.length === 0) return null;
-    return objects.find((obj) => obj.id === editorState.selectedIds[0]) || null;
-  }, [editorState.selectedIds, objects]);
-
-  // Wrap createObjectDefaults
-  const createObjectDefaults = useCallback(
-    (id: string, type: string, index: number) => ({
-      id,
-      type: "shape",
-      visible: true,
-      name: `${type || "Object"} ${index}`,
-      zIndex: objects.length,
-      blendMode: "normal" as BlendMode,
-    }),
-    [objects.length]
-  );
-
-  // Handle adding shape
-  const handleAddShape = useCallback(
-    (shapeType: ShapeObject["shapeType"]) => {
-      const centerX =
-        (containerWidth - currentFormat.width) / 2 + currentFormat.width / 2;
-      const centerY =
-        (containerHeight - currentFormat.height) / 2 + currentFormat.height / 2;
-
-      const newShape: ShapeObject = {
-        id: `shape-${Date.now()}`,
-        type: "shape",
-        shapeType,
-        position: { x: centerX - 50, y: centerY - 50 },
-        size: { width: 100, height: 100 },
-        fill: "#cccccc",
-        stroke: "#000000",
-        strokeWidth: 2,
-        rotation: 0,
-        opacity: 1,
-        visible: true,
-        name: `${shapeType} ${objects.length + 1}`,
-        zIndex: objects.length,
-        blendMode: "normal",
-        parentId: editorState.selectedLayerId || null,
-        children: [],
-        isExpanded: true,
-      };
-      setObjects((prev) => [...prev, newShape]);
-    },
-    [
-      containerWidth,
-      containerHeight,
-      currentFormat,
-      objects.length,
-      setObjects,
-      editorState.selectedLayerId,
-    ]
   );
 
   // Handle visibility change
@@ -353,9 +195,9 @@ function App() {
       setObjects(project.objects);
       setCurrentFormat(project.currentFormat);
       setCustomFormats(project.customFormats);
-      closeDialogByKey("load");
+      closeDialogRef.current?.("load");
     },
-    [setObjects, closeDialogByKey]
+    [setObjects]
   );
 
   // Update handleTemplateSelect similarly
@@ -363,9 +205,9 @@ function App() {
     (template: Template) => {
       setObjects(template.objects);
       setCurrentFormat(template.format);
-      closeDialogByKey("templateBrowser");
+      closeDialogRef.current?.("templateBrowser");
     },
-    [setObjects, closeDialogByKey]
+    [setObjects]
   );
 
   // Handle template saved
@@ -455,104 +297,36 @@ function App() {
         name: mediaItem.name,
         zIndex: objects.length,
         blendMode: "normal",
-        parentId: null,
+        parentId: editorState.selectedLayerId || ROOT_ID,
         children: [],
         isExpanded: false,
       };
 
-      setObjects((prev) => [...prev, newImage]);
-      closeDialogByKey("mediaLibrary");
+      console.log(insertNode(objects, newImage, newImage.parentId));
+      setObjects(insertNode(objects, newImage, newImage.parentId));
+      closeDialogRef.current?.("mediaLibrary");
     },
     [
       containerWidth,
       containerHeight,
       currentFormat,
-      objects.length,
-      closeDialogByKey,
+      editorState.selectedLayerId,
+      objects,
       setObjects,
     ]
   );
 
-  // Add state for dialogs
-  const [dialogs, setDialogs] = useState<DialogState>({
-    preview: { isOpen: false, props: {} },
-    export: {
-      isOpen: false,
-      props: {
-        stage: stageRef.current,
-        currentFormat,
-        objects,
-      },
-    },
-    save: {
-      isOpen: false,
-      props: {
-        stage: stageRef.current,
-        currentFormat,
-        customFormats,
-        objects,
-      },
-    },
-    load: {
-      isOpen: false,
-      props: {
-        onLoad: handleLoadProject,
-      },
-    },
-    exportJSON: {
-      isOpen: false,
-      props: {
-        project: {
-          id: Date.now().toString(),
-          name: "Export",
-          objects,
-          currentFormat,
-          customFormats,
-          lastModified: new Date(),
-        } as Project,
-      },
-    },
-    templateBrowser: {
-      isOpen: false,
-      props: {
-        onSelect: handleTemplateSelect,
-      },
-    },
-    saveTemplate: {
-      isOpen: false,
-      props: {
-        objects,
-        currentFormat,
-        onSaved: handleTemplateSaved,
-      },
-    },
-    mediaLibrary: {
-      isOpen: false,
-      props: {
-        onSelect: handleMediaLibrarySelect,
-      },
-    },
+  const { dialogs, openDialog, closeDialog } = useDialogs({
+    stageRef,
+    currentFormat,
+    customFormats,
+    objects,
+    handleLoadProject,
+    handleTemplateSelect,
+    handleTemplateSaved,
+    handleMediaLibrarySelect,
   });
-
-  // Update the openDialog function to include props
-  const openDialog = useCallback(
-    (dialogName: string) => {
-      setDialogs((prev) => ({
-        ...prev,
-        [dialogName]: {
-          isOpen: true,
-          props: {
-            ...prev[dialogName as DialogKey].props,
-            stage: stageRef.current,
-            currentFormat,
-            customFormats,
-            objects,
-          },
-        },
-      }));
-    },
-    [currentFormat, customFormats, objects]
-  );
+  closeDialogRef.current = closeDialog;
 
   // Add this function to calculate the zoom level
   const calculateFitZoom = useCallback(
@@ -673,11 +447,10 @@ function App() {
   // Update handleAddObject to respect selected layer
   const handleAddObject = useCallback(
     (object: Partial<EditorObjectBase>) => {
-      const root = objects.find((obj) => obj.type === "root");
       const newObject: EditorObjectBase = {
         ...object,
         id: `${object.type}-${Date.now()}`,
-        parentId: editorState.selectedLayerId || root?.id || null, // Add to selected layer if one is selected
+        parentId: editorState.selectedLayerId || ROOT_ID || null, // Add to selected layer if one is selected
         zIndex: Math.max(...objects.map((obj) => obj.zIndex), 0) + 1,
         isExpanded: false,
         visible: true,
@@ -713,14 +486,19 @@ function App() {
 
   // Add these functions near other handlers
   const handleCut = useCallback(() => {
-    const selectedObjects = objects.filter((obj) =>
-      editorState.selectedIds.includes(obj.id)
-    );
-    localStorage.setItem("clipboard", JSON.stringify(selectedObjects));
-    setObjects((prev) =>
-      prev.filter((obj) => !editorState.selectedIds.includes(obj.id))
-    );
-  }, [editorState.selectedIds, objects]);
+    setObjects((objects) => {
+      const selectedObjects = objects.filter((obj) =>
+        editorState.selectedIds.includes(obj.id)
+      );
+      localStorage.setItem("clipboard", JSON.stringify(selectedObjects));
+
+      let objs = [...objects];
+      editorState.selectedIds.forEach((id) => {
+        objs = removeNodeFromParent(objects, id);
+      });
+      return objs;
+    });
+  }, [editorState.selectedIds, setObjects]);
 
   const handleCopy = useCallback(() => {
     const selectedNodes = editorState.selectedIds
@@ -738,21 +516,17 @@ function App() {
     if (!clipboardData) return;
 
     const pastedNodes = JSON.parse(clipboardData) as EditorObjectBase[];
-    const offset = { x: 20, y: 20 };
 
     setObjects((prev) => {
-      const newNodes = pastedNodes.map((node) => ({
-        ...node,
-        id: `${node.type}-${Date.now()}-${Math.random()}`,
-        position: {
-          x: node.position.x + offset.x,
-          y: node.position.y + offset.y,
-        },
-        parentId: editorState.selectedLayerId || null, // Add to selected layer
-        children: [], // Reset children for pasted nodes
-      }));
-
-      return [...prev, ...newNodes];
+      let objects = [...prev];
+      pastedNodes.forEach((node) => {
+        objects = insertNode(
+          objects,
+          node,
+          editorState.selectedLayerId || ROOT_ID
+        );
+      });
+      return objects;
     });
   }, [editorState.selectedLayerId, setObjects]);
 
@@ -948,7 +722,7 @@ function App() {
 
       <div className="panel right-panel" style={{ width: rightPanelWidth }}>
         <PropertyPanel
-          selectedObject={getSelectedObject()}
+          selectedIds={editorState.selectedIds}
           onChange={handleObjectChange}
           editorState={editorState}
           setEditorState={useCallback((newState: EditorState) => {
@@ -964,7 +738,7 @@ function App() {
       </div>
       <DialogManager
         dialogs={dialogs}
-        closeDialog={closeDialogByKey}
+        closeDialog={closeDialog}
         openDialog={openDialog}
         stage={stageRef.current}
       />

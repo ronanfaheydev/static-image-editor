@@ -309,9 +309,22 @@ export const OBJECT_PROPERTIES: Record<string, PropertyConfig[]> = {
       group: "text",
     },
     {
-      id: "fill",
+      id: "fontColor",
       label: "Color",
       type: "color",
+      group: "text",
+    },
+    {
+      id: "stroke",
+      label: "Stroke Color",
+      type: "color",
+      group: "text",
+    },
+    {
+      id: "strokeWidth",
+      label: "Stroke Width",
+      type: "number",
+      min: 0,
       group: "text",
     },
     {
@@ -413,11 +426,11 @@ export const OBJECT_PROPERTIES: Record<string, PropertyConfig[]> = {
 };
 
 export const getPropertyValue = (
-  object: EditorObjectBase,
+  objects: EditorObjectBase[],
   propertyId: string
 ) => {
   const parts = propertyId.split(".");
-  let value: any = object;
+  let value: any = objects.length > 0 ? objects[0] : {};
   for (const part of parts) {
     value = value[part];
   }

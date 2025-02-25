@@ -6,12 +6,13 @@ import {
   deleteMediaItem,
 } from "../../utils/mediaLibrary";
 import "./MediaLibraryDialog.scss";
+import { DialogKey } from "../../types/project";
 
 interface MediaLibraryDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (mediaItem: MediaItem) => void;
-  openDialog: (dialogName: string) => void;
+  openDialog: (dialogName: DialogKey) => void;
 }
 
 export const MediaLibraryDialog: React.FC<MediaLibraryDialogProps> = ({
@@ -110,7 +111,10 @@ export const MediaLibraryDialog: React.FC<MediaLibraryDialogProps> = ({
               <div
                 key={item.id}
                 className="media-item"
-                onClick={() => onSelect(item)}
+                onClick={() => {
+                  debugger;
+                  onSelect(item);
+                }}
               >
                 <img src={item.thumbnail} alt={item.name} />
 

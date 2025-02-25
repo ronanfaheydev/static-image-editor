@@ -29,6 +29,7 @@ import {
 } from "../../utils/treeUtils";
 import { LayerContainer } from "./layerItem/LayerContainer";
 import { SortableLayerItem } from "./layerItem/SortableLayerItem";
+import { DialogKey } from "../../types/project";
 
 interface LayerPanelProps {
   objects: EditorObjectBase[];
@@ -40,7 +41,7 @@ interface LayerPanelProps {
   handleFormatChange: (format: Format) => void;
   handleCustomFormatAdd: (format: Format) => void;
   handleFormatEditModeChange: (mode: FormatEditMode) => void;
-  openDialog: (dialogName: string) => void;
+  openDialog: (dialogName: DialogKey) => void;
   formatEditMode: FormatEditMode;
   zoom: number;
   onZoomChange: (zoom: number) => void;

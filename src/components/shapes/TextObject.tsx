@@ -4,14 +4,6 @@ import { TextObject } from "../../types/editor";
 import { useCallback, useEffect, useRef } from "react";
 import "./TextObject.scss";
 import { KonvaEventObject } from "konva/lib/Node";
-import { Box } from "konva/lib/types";
-
-interface BoundBox {
-  width: number;
-  height: number;
-  x: number;
-  y: number;
-}
 
 interface TextObjectProps {
   object: TextObject;
@@ -72,6 +64,8 @@ export const TextObjectComponent = ({
     [onChange, onDragEnd, object]
   );
 
+  console.log(object);
+
   return (
     <>
       <Text
@@ -83,7 +77,8 @@ export const TextObjectComponent = ({
         height={object.size.height}
         fontSize={object.fontSize}
         fontFamily={object.fontFamily}
-        fill={object.fill}
+        fill={object.fontColor}
+        stroke={object.stroke}
         rotation={object.rotation}
         opacity={object.opacity}
         draggable
