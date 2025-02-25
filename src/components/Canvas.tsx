@@ -10,6 +10,7 @@ import {
   Position,
   Size,
   ShapeType,
+  TreeNode,
 } from "../types/editor";
 import { ImageObjectComponent } from "./shapes/ImageObject";
 import { TextObjectComponent } from "./shapes/TextObject";
@@ -196,15 +197,15 @@ export const Canvas: React.FC<CanvasProps> = ({
                 rotation: node.rotation(),
               };
 
-              handleObjectChange(node.id, newProps);
+              handleObjectChange(node.id(), newProps);
 
               // Update children positions proportionally
               const children = objects.filter(
-                (child) => child.parentId === node.id
+                (child) => child.parentId === node.id()
               );
               children.forEach((child) => {
-                const relativeX = child.position.x / node.size.width;
-                const relativeY = child.position.y / node.size.height;
+                const relativeX = child.position.x / node.size().width;
+                const relativeY = child.position.y / node.size().height;
                 handleObjectChange(child.id, {
                   position: {
                     x: newProps.size!.width * relativeX,

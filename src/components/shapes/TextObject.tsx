@@ -4,15 +4,16 @@ import { TextObject } from "../../types/editor";
 import { useCallback, useEffect, useRef } from "react";
 import "./TextObject.scss";
 import { KonvaEventObject } from "konva/lib/Node";
+import { Box } from "konva/lib/shapes/Transformer";
 
 interface TextObjectProps {
   object: TextObject;
   isSelected: boolean;
   onSelect: (e: KonvaEventObject<Event>) => void;
   onChange: (newProps: Partial<TextObject>) => void;
-  onDragStart?: (e: KonvaEventObject<DragEvent>) => void;
-  onDragEnd?: (e: KonvaEventObject<DragEvent>) => void;
-  onDragMove?: (e: KonvaEventObject<DragEvent>) => void;
+  onDragStart?: (e: KonvaEventObject<DragEvent>, object: TextObject) => void;
+  onDragEnd?: (e: KonvaEventObject<DragEvent>, object: TextObject) => void;
+  onDragMove?: (e: KonvaEventObject<DragEvent>, object: TextObject) => void;
 }
 
 export const TextObjectComponent = ({
@@ -36,35 +37,30 @@ export const TextObjectComponent = ({
 
   const handleDragStart = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
-      onDragStart?.(e);
+      onDragStart?.(e, object);
     },
-    [onDragStart]
+    [onDragStart, object]
   );
 
   const handleDragMove = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
-      onDragMove?.(e);
+      onDragMove?.(e, object);
     },
-    [onDragMove]
+    [onDragMove, object]
   );
 
   const handleDragEnd = useCallback(
     (e: Konva.KonvaEventObject<DragEvent>) => {
-      onDragEnd?.(e);
-      onChange(
-        {
-          position: {
-            x: e.target.x(),
-            y: e.target.y(),
-          },
+      onDragEnd?.(e, object);
+      onChange({
+        position: {
+          x: e.target.x(),
+          y: e.target.y(),
         },
-        true // isDropping = true
-      );
+      });
     },
     [onChange, onDragEnd, object]
   );
-
-  console.log(object);
 
   return (
     <>
@@ -104,8 +100,6 @@ export const TextObjectComponent = ({
           textarea.style.width = `${textNode.width()}px`;
           textarea.style.height = `${textNode.height()}px`;
           textarea.style.fontSize = `${object.fontSize}px`;
-          textarea.style.border = "2px solid #000";
-          textarea.style.borderRadius = "5px";
           textarea.style.backgroundColor = "white";
           textarea.style.padding = "0px";
           textarea.style.margin = "0px";
@@ -116,7 +110,11 @@ export const TextObjectComponent = ({
           textarea.style.fontFamily = object.fontFamily;
           textarea.style.transformOrigin = "left top";
           textarea.style.textAlign = textNode.align();
-          textarea.style.color = object.fill;
+          textarea.style.color = object.fontColor;
+          textarea.style.opacity = object.opacity.toString();
+          textarea.style.zIndex = "1000";
+          textarea.style.borderWidth = object.strokeWidth.toString();
+          textarea.style.borderColor = object.stroke;
 
           textarea.focus();
 
