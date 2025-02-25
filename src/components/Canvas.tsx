@@ -7,7 +7,6 @@ import {
   TextObject,
   ShapeObject,
   GroupObject,
-  LayerObject,
   Position,
   Size,
   ShapeType,
@@ -22,6 +21,7 @@ import type Konva from "konva";
 import { Guidelines } from "./shapes/Guidelines";
 import { Format } from "../types/format";
 import { ContextMenu, ContextMenuItem } from "./common/ContextMenu";
+import { ROOT_ID } from "../constants";
 
 interface CanvasProps {
   editorState: EditorState;
@@ -116,6 +116,16 @@ export const Canvas: React.FC<CanvasProps> = ({
   const handleStageClick = useCallback(
     (e: KonvaEventObject<MouseEvent>) => {
       const clickedOnEmpty = e.target === e.target.getStage();
+      if (clickedOnEmpty) {
+        handleSelect(null, false);
+      }
+    },
+    [handleSelect]
+  );
+
+  const handleRootClick = useCallback(
+    (e: KonvaEventObject<MouseEvent>) => {
+      const clickedOnEmpty = e.target.id() === ROOT_ID;
       if (clickedOnEmpty) {
         handleSelect(null, false);
       }
@@ -549,6 +559,8 @@ export const Canvas: React.FC<CanvasProps> = ({
               height={currentFormat.height}
               fill={editorState.backgroundColor}
               opacity={editorState.backgroundOpacity}
+              onClick={handleRootClick}
+              id={ROOT_ID}
             />
             {/* Root objects */}
             {objects
