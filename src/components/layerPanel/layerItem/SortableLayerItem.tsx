@@ -59,69 +59,87 @@ export const SortableLayerItem: React.FC<SortableLayerItemProps> = ({
   };
 
   return (
-    <div
-      className={`layer-item ${isSelected ? "selected" : ""}`}
-      style={style}
-      onClick={handleClick}
-    >
-      {/* Drag Handle */}
+    <>
       <div
-        className="drag-handle"
-        ref={setNodeRef}
-        {...attributes}
-        {...listeners}
+        className={`layer-item ${isSelected ? "selected" : ""}`}
+        style={style}
+        onClick={handleClick}
       >
-        ⋮⋮
-      </div>
-
-      {/* Group Expand/Collapse Button */}
-      {object.type === "group" && (
-        <button
-          className="toggle-group"
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsExpanded(!isExpanded);
-          }}
+        {/* Drag Handle */}
+        <div
+          className="drag-handle"
+          ref={setNodeRef}
+          {...attributes}
+          {...listeners}
         >
-          {isExpanded ? "▼" : "▶"}
-        </button>
-      )}
+          ⋮⋮
+        </div>
 
-      {/* Visibility Toggle */}
-      <button
-        className={`visibility-toggle ${object.visible ? "visible" : ""}`}
-        onClick={(e) => {
-          e.stopPropagation();
-          onVisibilityChange(object.id, !object.visible);
-        }}
-      >
-        {object.visible ? (
-          <span className="visible-icon" />
-        ) : (
-          <span className="hidden-icon" />
+        {/* Group Expand/Collapse Button */}
+        {object.type === "group" && (
+          <button
+            className="toggle-group"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsExpanded(!isExpanded);
+            }}
+          >
+            {isExpanded ? "▼" : "▶"}
+          </button>
         )}
-      </button>
 
-      {/* Layer Name */}
-      <input
-        className="layer-name"
-        value={object.name}
-        onChange={(e) => onNameChange(object.id, e.target.value)}
-        onClick={(e) => e.stopPropagation()}
-      />
-
-      {/* Delete Button */}
-      {object.type !== "root" && (
+        {/* Visibility Toggle */}
         <button
-          className="delete-button"
+          className={`visibility-toggle ${object.visible ? "visible" : ""}`}
           onClick={(e) => {
             e.stopPropagation();
-            onDelete(object.id);
+            onVisibilityChange(object.id, !object.visible);
           }}
         >
-          ×
+          {object.visible ? (
+            <span className="visible-icon" />
+          ) : (
+            <span className="hidden-icon" />
+          )}
         </button>
+
+        {/* Layer Name */}
+        <input
+          className="layer-name"
+          value={object.name}
+          onChange={(e) => onNameChange(object.id, e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+        />
+
+        {/* Delete Button */}
+        {object.type !== "root" && (
+          <button
+            className="delete-button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(object.id);
+            }}
+          >
+            ×
+          </button>
+        )}
+      </div>
+      {object.type === "group" && isExpanded && (
+        <div className="layer-children">
+          {object.children.map((child) => (
+            <SortableLayerItem
+              key={child.id}
+              object={child}
+              isSelected={isSelected}
+              onSelect={onSelect}
+              onVisibilityChange={onVisibilityChange}
+              onNameChange={onNameChange}
+              onDelete={onDelete}
+              depth={depth + 1}
+            />
+          ))}
+        </div>
       )}
-    </div>
+    </>
   );
 };

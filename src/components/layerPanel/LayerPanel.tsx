@@ -1,11 +1,10 @@
-import React, { useState, useCallback, useMemo } from "react";
+import React, { useState, useCallback } from "react";
 import {
   EditorObjectBase,
   FormatEditMode,
   LayerObject,
-  TreeNode,
 } from "../../types/editor";
-import { Format, DEFAULT_FORMATS } from "../../types/format";
+
 import {
   DndContext,
   closestCenter,
@@ -30,6 +29,8 @@ import {
 import { LayerContainer } from "./layerItem/LayerContainer";
 import { SortableLayerItem } from "./layerItem/SortableLayerItem";
 import { DialogKey } from "../../types/project";
+import { Format } from "../../types/format";
+import { DEFAULT_FORMATS } from "../../hooks/useFormats";
 
 interface LayerPanelProps {
   objects: EditorObjectBase[];

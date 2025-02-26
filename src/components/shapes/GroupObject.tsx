@@ -45,11 +45,6 @@ export const GroupObjectComponent: React.FC<GroupObjectProps> = ({
   }, [isSelected]);
 
   const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
-    // onDragEnd?.(e, object);
-    console.log("handleDragEnd", {
-      x: e.target.x(),
-      y: e.target.y(),
-    });
     onChange({
       position: {
         x: e.target.x(),
@@ -91,12 +86,7 @@ export const GroupObjectComponent: React.FC<GroupObjectProps> = ({
     <>
       <Group
         ref={groupRef}
-        // x={object.position.x}
-        // y={object.position.y}
-        // width={object.size.width}
-        // height={object.size.height}
         rotation={object.rotation}
-        // opacity={object.opacity}
         draggable={isDraggable}
         onClick={handleSelect}
         onTap={handleSelect}

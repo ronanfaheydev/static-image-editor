@@ -20,7 +20,7 @@ interface PropertyPanelProps {
   objects: EditorObjectBase[];
   onChange: (id: string, changes: Partial<EditorObjectBase>) => void;
   editorState: EditorState;
-  setEditorState: (state: EditorState) => void;
+  setEditorState: (state: Partial<EditorState>) => void;
   getCanvasSize: () => { width: number; height: number };
 }
 
@@ -36,7 +36,6 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
 
   const handleBackgroundChange = (changes: Partial<EditorState>) => {
     const newState = {
-      ...editorState,
       ...changes,
     };
     setEditorState(newState);
@@ -280,7 +279,6 @@ export const PropertyPanel: React.FC<PropertyPanelProps> = ({
                 onChange={(e) => {
                   // Direct state update
                   setEditorState({
-                    ...editorState,
                     backgroundOpacity: parseFloat(e.target.value),
                   });
                 }}

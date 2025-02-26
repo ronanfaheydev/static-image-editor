@@ -1,4 +1,7 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
+import { ROOT_ID } from "../constants";
+import { findNodeById, findParentNode } from "../utils/treeUtils";
+import { TreeNode } from "../types/editor";
 
 interface HistoryState<T> {
   past: T[];
@@ -66,6 +69,25 @@ export function useHistory<T>(initialPresent: T) {
     []
   );
 
+  const getters = useMemo(() => {
+    return {
+      getObject: (id: string) => {
+        return findNodeById<TreeNode>(state.present as TreeNode[], id);
+      },
+      getParent: (id: string) => {
+        return findParentNode<TreeNode>(state.present as TreeNode[], id);
+      },
+      getRoot: () => {
+        return findNodeById<TreeNode>(state.present as TreeNode[], ROOT_ID);
+      },
+      getIds: (ids: string[]) => {
+        return ids.map((id) =>
+          findNodeById<TreeNode>(state.present as TreeNode[], id)
+        );
+      },
+    };
+  }, [state.present]);
+
   return {
     state: state.present,
     setState: updatePresent,
@@ -75,5 +97,6 @@ export function useHistory<T>(initialPresent: T) {
     canRedo,
     history: state,
     lastModified,
+    getters,
   };
 }

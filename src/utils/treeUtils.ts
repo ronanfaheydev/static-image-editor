@@ -1,18 +1,26 @@
-import { TreeNode } from "../types/editor";
+type DefaultNodeProps<T> = {
+  id: string;
+  children: T[];
+  parentId: string | null;
+  type: string;
+};
 
-export const findNodeById = (tree: TreeNode[], id: string): TreeNode | null => {
+export const findNodeById = <T extends DefaultNodeProps<T>>(
+  tree: T[],
+  id: string
+): T | null => {
   for (const node of tree) {
     if (node.id === id) return node;
-    const found = findNodeById(node.children, id);
+    const found = findNodeById<T>(node.children, id);
     if (found) return found;
   }
   return null;
 };
 
-export const findParentNode = (
-  tree: TreeNode[],
+export const findParentNode = <T extends DefaultNodeProps<T>>(
+  tree: T[],
   childId: string
-): TreeNode | null => {
+): T | null => {
   for (const node of tree) {
     if (node.children.some((child) => child.id === childId)) return node;
     const found = findParentNode(node.children, childId);
@@ -21,10 +29,10 @@ export const findParentNode = (
   return null;
 };
 
-export const removeNodeFromParent = (
-  tree: TreeNode[],
+export const removeNodeFromParent = <T extends DefaultNodeProps<T>>(
+  tree: T[],
   nodeId: string
-): TreeNode[] => {
+): T[] => {
   return tree.map((node) => ({
     ...node,
     children: node.children
@@ -33,11 +41,11 @@ export const removeNodeFromParent = (
   }));
 };
 
-export const insertNode = (
-  tree: TreeNode[],
-  newNode: TreeNode,
+export const insertNode = <T extends DefaultNodeProps<T>>(
+  tree: T[],
+  newNode: T,
   parentId?: string | null
-): TreeNode[] => {
+): T[] => {
   if (parentId) {
     const parentNode = findNodeById(tree, parentId);
     if (!parentNode) return tree;
@@ -58,11 +66,11 @@ export const insertNode = (
   return [...tree, newNode];
 };
 
-export const addNodeToParent = (
-  tree: TreeNode[],
+export const addNodeToParent = <T extends DefaultNodeProps<T>>(
+  tree: T[],
   nodeId: string,
   parentId: string
-): TreeNode[] => {
+): T[] => {
   const nodeToAdd = findNodeById(tree, nodeId);
   if (!nodeToAdd) return tree;
 
@@ -80,11 +88,11 @@ export const addNodeToParent = (
   });
 };
 
-export const updateNodeInTree = (
-  tree: TreeNode[],
+export const updateNodeInTree = <T extends DefaultNodeProps<T>>(
+  tree: T[],
   nodeId: string,
-  updates: Partial<TreeNode>
-): TreeNode[] => {
+  updates: Partial<T>
+): T[] => {
   return tree.map((node) => {
     if (node.id === nodeId) {
       return { ...node, ...updates };
@@ -96,11 +104,11 @@ export const updateNodeInTree = (
   });
 };
 
-export const moveNodeToIndex = (
-  tree: TreeNode[],
+export const moveNodeToIndex = <T extends DefaultNodeProps<T>>(
+  tree: T[],
   nodeId: string,
   targetIndex: number
-): TreeNode[] => {
+): T[] => {
   const node = findNodeById(tree, nodeId);
   if (!node) return tree;
 
@@ -120,10 +128,10 @@ export const moveNodeToIndex = (
   return [...otherNodes, ...reorderedSiblings];
 };
 
-export const moveNodeToFront = (
-  tree: TreeNode[],
+export const moveNodeToFront = <T extends DefaultNodeProps<T>>(
+  tree: T[],
   nodeId: string
-): TreeNode[] => {
+): T[] => {
   const node = findNodeById(tree, nodeId);
   if (!node) return tree;
 
@@ -131,17 +139,17 @@ export const moveNodeToFront = (
   return moveNodeToIndex(tree, nodeId, siblings.length - 1);
 };
 
-export const moveNodeToBack = (
-  tree: TreeNode[],
+export const moveNodeToBack = <T extends DefaultNodeProps<T>>(
+  tree: T[],
   nodeId: string
-): TreeNode[] => {
+): T[] => {
   return moveNodeToIndex(tree, nodeId, 0);
 };
 
-export const moveNodeForward = (
-  tree: TreeNode[],
+export const moveNodeForward = <T extends DefaultNodeProps<T>>(
+  tree: T[],
   nodeId: string
-): TreeNode[] => {
+): T[] => {
   const node = findNodeById(tree, nodeId);
   if (!node) return tree;
 
@@ -152,10 +160,10 @@ export const moveNodeForward = (
   return moveNodeToIndex(tree, nodeId, currentIndex + 1);
 };
 
-export const moveNodeBackward = (
-  tree: TreeNode[],
+export const moveNodeBackward = <T extends DefaultNodeProps<T>>(
+  tree: T[],
   nodeId: string
-): TreeNode[] => {
+): T[] => {
   const node = findNodeById(tree, nodeId);
   if (!node) return tree;
 
@@ -164,12 +172,4 @@ export const moveNodeBackward = (
 
   if (currentIndex === 0) return tree; // Already at back
   return moveNodeToIndex(tree, nodeId, currentIndex - 1);
-};
-
-export const isInGroup = (node: TreeNode, objects: TreeNode[]): boolean => {
-  if (node.type === "root") return false;
-  if (!node.parentId) return false;
-  const parent = findNodeById(objects, node.parentId) as TreeNode;
-  if (parent.type === "group") return true;
-  return false;
 };

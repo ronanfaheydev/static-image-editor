@@ -17,7 +17,7 @@ import { DialogKey } from "../../types/project";
 
 interface ToolbarProps {
   editorState: EditorState;
-  setEditorState: (state: EditorState) => void;
+  setEditorState: (state: Partial<EditorState>) => void;
   undo: () => void;
   redo: () => void;
   canUndo: boolean;
@@ -49,12 +49,11 @@ export const Toolbar: React.FC<ToolbarProps> = ({
     tool: EditorState["tool"],
     shapeType?: ShapeType
   ) => {
-    setEditorState((prev) => ({
-      ...prev,
+    setEditorState({
       tool,
       selectedIds: [], // Clear selection when changing tools
       selectedShapeType: shapeType,
-    }));
+    });
   };
 
   return (
