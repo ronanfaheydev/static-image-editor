@@ -3,7 +3,6 @@ import { Group, Transformer } from "react-konva";
 import type Konva from "konva";
 import { EditorObjectBase, GroupObject } from "../../types/editor";
 import { KonvaEventObject, Node, NodeConfig } from "konva/lib/Node";
-import { useCachedNode } from "@dnd-kit/core/dist/hooks/utilities";
 
 type KonvaMouseTouch =
   | KonvaEventObject<MouseEvent, Node<NodeConfig>>
@@ -21,6 +20,7 @@ interface GroupObjectProps {
   onDragMove?: (e: KonvaEventObject<DragEvent>, object: GroupObject) => void;
   onTransformEnd?: () => void;
   renderNode: (object: EditorObjectBase) => React.ReactNode;
+  isDraggable: boolean;
 }
 
 export const GroupObjectComponent: React.FC<GroupObjectProps> = ({
@@ -32,8 +32,7 @@ export const GroupObjectComponent: React.FC<GroupObjectProps> = ({
   children,
   onDragStart,
   onDragMove,
-  onDragEnd,
-  onTransformEnd,
+  isDraggable,
 }) => {
   const groupRef = useRef<Konva.Group>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
@@ -47,6 +46,10 @@ export const GroupObjectComponent: React.FC<GroupObjectProps> = ({
 
   const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
     // onDragEnd?.(e, object);
+    console.log("handleDragEnd", {
+      x: e.target.x(),
+      y: e.target.y(),
+    });
     onChange({
       position: {
         x: e.target.x(),
@@ -55,17 +58,12 @@ export const GroupObjectComponent: React.FC<GroupObjectProps> = ({
     });
   };
 
-  const handleTransformEnd = (e: Konva.KonvaEventObject<Event>) => {
-    // onTransformEnd?.(e, object);
+  const handleTransformEnd = () => {
     if (!groupRef.current) return;
     const node = groupRef.current;
 
     const scaleX = node.scaleX();
     const scaleY = node.scaleY();
-
-    // Reset scale and update width/height instead
-    node.scaleX(1);
-    node.scaleY(1);
 
     onChange({
       position: {
@@ -80,13 +78,10 @@ export const GroupObjectComponent: React.FC<GroupObjectProps> = ({
     });
   };
 
-  console.log({ isSelected });
-
   const handleSelect = useCallback(
     (e: KonvaMouseTouch) => {
       e.cancelBubble = true;
       e.evt.preventDefault();
-      console.log("handleSelect", e.evt.target);
       onSelect(e);
     },
     [onSelect]
@@ -96,13 +91,13 @@ export const GroupObjectComponent: React.FC<GroupObjectProps> = ({
     <>
       <Group
         ref={groupRef}
-        x={object.position.x}
-        y={object.position.y}
-        width={object.size.width}
-        height={object.size.height}
+        // x={object.position.x}
+        // y={object.position.y}
+        // width={object.size.width}
+        // height={object.size.height}
         rotation={object.rotation}
-        opacity={object.opacity}
-        draggable
+        // opacity={object.opacity}
+        draggable={isDraggable}
         onClick={handleSelect}
         onTap={handleSelect}
         onDragEnd={handleDragEnd}

@@ -28,6 +28,7 @@ interface ImageObjectProps {
     object: ImageObject
   ) => void;
   onContextMenu?: (e: KonvaEventObject<MouseEvent>) => void;
+  isDraggable: boolean;
 }
 
 export const ImageObjectComponent: React.FC<ImageObjectProps> = ({
@@ -39,6 +40,7 @@ export const ImageObjectComponent: React.FC<ImageObjectProps> = ({
   onDragEnd,
   onDragMove,
   onContextMenu,
+  isDraggable,
 }) => {
   const [image] = useImage(object.src);
   const shapeRef = useRef<Konva.Image>(null);
@@ -122,7 +124,7 @@ export const ImageObjectComponent: React.FC<ImageObjectProps> = ({
         height={object.size.height}
         rotation={object.rotation}
         opacity={object.opacity}
-        draggable
+        draggable={isDraggable}
         onClick={onSelect}
         onTap={onSelect}
         onDragStart={handleDragStart}

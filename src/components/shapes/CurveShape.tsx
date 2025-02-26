@@ -12,6 +12,7 @@ interface CurveShapeProps {
       | KonvaEventObject<TouchEvent, Node<NodeConfig>>
   ) => void;
   onChange: (changes: Partial<ShapeObject>) => void;
+  isDraggable: boolean;
 }
 
 export const CurveShape: React.FC<CurveShapeProps> = ({
@@ -19,6 +20,7 @@ export const CurveShape: React.FC<CurveShapeProps> = ({
   isSelected,
   onSelect,
   onChange,
+  isDraggable,
 }) => {
   const defaultPoints = [50, 50, 200, 50, 200, 200];
   const points = object.curveConfig?.points || defaultPoints;
@@ -44,7 +46,7 @@ export const CurveShape: React.FC<CurveShapeProps> = ({
     <Group
       x={object.position.x}
       y={object.position.y}
-      draggable
+      draggable={isDraggable}
       onClick={onSelect}
       onTap={onSelect}
       onDragEnd={(e) => {

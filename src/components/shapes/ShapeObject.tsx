@@ -22,6 +22,7 @@ interface ShapeObjectProps {
     e: KonvaEventObject<MouseEvent>,
     object: ShapeObject
   ) => void;
+  isDraggable: boolean;
 }
 
 export const ShapeObjectComponent = ({
@@ -32,6 +33,7 @@ export const ShapeObjectComponent = ({
   onDragStart,
   onDragEnd,
   onContextMenu,
+  isDraggable,
 }: ShapeObjectProps) => {
   const shapeRef = useRef<Konva.Shape>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
@@ -145,6 +147,7 @@ export const ShapeObjectComponent = ({
           isSelected={isSelected}
           onSelect={onSelect}
           onChange={onChange}
+          isDraggable={isDraggable}
         />
       ) : (
         <Shape
@@ -159,7 +162,7 @@ export const ShapeObjectComponent = ({
           strokeWidth={object.strokeWidth}
           rotation={object.rotation}
           opacity={object.opacity}
-          draggable
+          draggable={isDraggable}
           onClick={onSelect}
           onTap={onSelect}
           blendMode={object.blendMode}

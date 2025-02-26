@@ -23,7 +23,7 @@ import { Guidelines } from "./shapes/Guidelines";
 import { Format } from "../types/format";
 import { ContextMenu, ContextMenuItem } from "./common/ContextMenu";
 import { ROOT_ID } from "../constants";
-import { findNodeById } from "../utils/treeUtils";
+import { findNodeById, isInGroup } from "../utils/treeUtils";
 import { GroupObjectComponent } from "./shapes/GroupObject";
 
 interface DrawPreviewState {
@@ -43,7 +43,6 @@ interface ContextMenuState {
 const DrawPreview: React.FC<{
   drawPreview: DrawPreviewState;
 }> = ({ drawPreview }) => {
-  console.log(drawPreview);
   return (
     <ShapeObjectComponent
       object={{
@@ -144,6 +143,7 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   const _handleObjectChange = useCallback(
     (id: string, changes: Partial<EditorObjectBase>) => {
+      console.log("_handleObjectChange", changes);
       if (
         changes.position?.x !== undefined &&
         changes.position?.y !== undefined
@@ -169,13 +169,14 @@ export const Canvas: React.FC<CanvasProps> = ({
         //   changes.position = snapToObjects(object, changes.position);
         // }
       }
-      handleObjectChange(id, changes);
+      handleObjectChange(id, { ...changes, position: undefined });
     },
     [handleObjectChange, editorState.selectedIds, objects]
   );
 
   const handleStageClick = useCallback(
     (e: KonvaEventObject<MouseEvent>) => {
+      console.log("handleStageClick");
       const clickedOnEmpty = e.target === e.target.getStage();
       if (clickedOnEmpty) {
         handleSelect(null, false);
@@ -186,7 +187,19 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   const handleRootClick = useCallback(
     (e: KonvaEventObject<MouseEvent>) => {
+      console.log("handleRootClick");
       const clickedOnEmpty = e.target.id() === ROOT_ID;
+      if (clickedOnEmpty) {
+        handleSelect(null, false);
+      }
+    },
+    [handleSelect]
+  );
+
+  const handleGroupClick = useCallback(
+    (e: KonvaEventObject<MouseEvent>) => {
+      console.log("handleGroupClick");
+      const clickedOnEmpty = e.target === e.target.getStage();
       if (clickedOnEmpty) {
         handleSelect(null, false);
       }
@@ -196,10 +209,14 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   const _handleDragObjectStart = useCallback(
     (_: KonvaEventObject<DragEvent>, object: EditorObjectBase) => {
+      console.log("_handleDragObjectStart");
+      if (editorState.isDrawing) {
+        return;
+      }
       handleSelect(object.id, false);
       setDraggedObject(object);
     },
-    [handleSelect]
+    [handleSelect, editorState.isDrawing]
   );
 
   const _handleDragObjectEnd = useCallback(() => {
@@ -208,9 +225,13 @@ export const Canvas: React.FC<CanvasProps> = ({
 
   const _handleDragObjectMove = useCallback(
     (_: KonvaEventObject<DragEvent>, object: EditorObjectBase) => {
+      console.log("_handleDragObjectMove");
+      if (editorState.isDrawing) {
+        return;
+      }
       setDraggedObject(object);
     },
-    []
+    [editorState.isDrawing]
   );
 
   const _handleSelect = useCallback(
@@ -220,7 +241,11 @@ export const Canvas: React.FC<CanvasProps> = ({
         | KonvaEventObject<MouseEvent, Node<NodeConfig>>
         | KonvaEventObject<TouchEvent, Node<NodeConfig>>
     ) => {
+      console.log("_handleSelect");
       if (contextMenuRef.current.show) {
+        return;
+      }
+      if (editorState.isDrawing) {
         return;
       }
       e.evt.preventDefault();
@@ -232,7 +257,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           false
       );
     },
-    [handleSelect]
+    [handleSelect, editorState.isDrawing]
   );
 
   const handleContextMenu = useCallback(
@@ -267,9 +292,9 @@ export const Canvas: React.FC<CanvasProps> = ({
   const renderNode = useCallback(
     (node: EditorObjectBase) => {
       if (!node.visible) return null;
-      console.log(editorState);
 
       const _onSelect = _handleSelect.bind(null, node);
+      const isDraggable = !editorState.isDrawing && !isInGroup(node, objects);
 
       switch (node.type) {
         case "group":
@@ -282,6 +307,7 @@ export const Canvas: React.FC<CanvasProps> = ({
               key={node.id}
               renderNode={renderNode}
               onContextMenu={(e) => handleContextMenu(e, node.id)}
+              isDraggable={isDraggable}
             >
               {node.children.map((child) => renderNode(child))}
             </GroupObjectComponent>
@@ -299,6 +325,7 @@ export const Canvas: React.FC<CanvasProps> = ({
               onDragEnd={_handleDragObjectEnd}
               onDragMove={_handleDragObjectMove}
               onContextMenu={(e) => handleContextMenu(e, node.id)}
+              isDraggable={isDraggable}
             />
           );
 
@@ -314,6 +341,7 @@ export const Canvas: React.FC<CanvasProps> = ({
               onDragEnd={_handleDragObjectEnd}
               onDragMove={handleDragMove}
               onContextMenu={(e) => handleContextMenu(e, node.id)}
+              isDraggable={isDraggable}
             />
           );
 
@@ -328,6 +356,7 @@ export const Canvas: React.FC<CanvasProps> = ({
               onDragStart={_handleDragObjectStart}
               onDragEnd={_handleDragObjectEnd}
               onContextMenu={(e) => handleContextMenu(e, node.id)}
+              isDraggable={isDraggable}
             />
           );
 
@@ -337,12 +366,14 @@ export const Canvas: React.FC<CanvasProps> = ({
     },
     [
       editorState.selectedIds,
+      editorState.isDrawing,
       _handleSelect,
       _handleObjectChange,
       handleContextMenu,
       _handleDragObjectStart,
       handleDragMove,
       _handleDragObjectEnd,
+      _handleDragObjectMove,
     ]
   );
 
@@ -424,7 +455,10 @@ export const Canvas: React.FC<CanvasProps> = ({
   ]);
 
   const handleStageMouseDown = useCallback(() => {
-    if (editorState.tool === "select") return;
+    console.log("handleStageMouseDown");
+    if (editorState.tool === "select") {
+      return;
+    }
 
     // Get position relative to stage
     const stage = stageRef.current;
@@ -459,12 +493,14 @@ export const Canvas: React.FC<CanvasProps> = ({
   ]);
 
   const handleStageMouseMove = useCallback(() => {
+    console.log("handleStageMouseMove");
     if (
       !editorState.isDrawing ||
       !editorState.drawStartPosition ||
       !drawPreview
-    )
+    ) {
       return;
+    }
 
     const stage = stageRef.current;
     if (!stage) return;
@@ -480,8 +516,8 @@ export const Canvas: React.FC<CanvasProps> = ({
 
     // Calculate size based on drag distance
     const size = {
-      width: Math.abs(currentPosition.x - editorState.drawStartPosition.x),
-      height: Math.abs(currentPosition.y - editorState.drawStartPosition.y),
+      width: currentPosition.x - editorState.drawStartPosition.x,
+      height: currentPosition.y - editorState.drawStartPosition.y,
     };
 
     // Update preview
@@ -501,6 +537,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   ]);
 
   const handleStageMouseUp = useCallback(() => {
+    console.log("handleStageMouseUp");
     if (
       !editorState.isDrawing ||
       !drawPreview ||
@@ -554,8 +591,6 @@ export const Canvas: React.FC<CanvasProps> = ({
   const rootObject = objects.find(
     (obj) => obj.type === "root"
   ) as EditorObjectBase;
-
-  console.log(rootObject);
 
   return (
     <div

@@ -23,6 +23,7 @@ interface TextObjectProps {
       | KonvaEventObject<MouseEvent, Node<NodeConfig>>
       | KonvaEventObject<TouchEvent, Node<NodeConfig>>
   ) => void;
+  isDraggable: boolean;
 }
 
 export const TextObjectComponent = ({
@@ -33,6 +34,7 @@ export const TextObjectComponent = ({
   onDragStart,
   onDragEnd,
   onDragMove,
+  isDraggable,
 }: TextObjectProps) => {
   const textRef = useRef<Konva.Text>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
@@ -86,7 +88,7 @@ export const TextObjectComponent = ({
         stroke={object.stroke}
         rotation={object.rotation}
         opacity={object.opacity}
-        draggable
+        draggable={isDraggable}
         onClick={onSelect}
         onTap={onSelect}
         onDblClick={() => {

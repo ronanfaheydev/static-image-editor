@@ -165,3 +165,11 @@ export const moveNodeBackward = (
   if (currentIndex === 0) return tree; // Already at back
   return moveNodeToIndex(tree, nodeId, currentIndex - 1);
 };
+
+export const isInGroup = (node: TreeNode, objects: TreeNode[]): boolean => {
+  if (node.type === "root") return false;
+  if (!node.parentId) return false;
+  const parent = findNodeById(objects, node.parentId) as TreeNode;
+  if (parent.type === "group") return true;
+  return false;
+};

@@ -33,6 +33,7 @@ import {
   moveNodeToBack,
   moveNodeForward,
   moveNodeBackward,
+  isInGroup,
 } from "./utils/treeUtils";
 import { useEditorHotkeys } from "./hooks/useEditorHotkeys";
 import { useDialogs } from "./hooks/useDialogs";
@@ -182,22 +183,30 @@ function App() {
   // Handle object selection
   const handleSelect = useCallback(
     (id: string | null, multiSelect: boolean) => {
+      let _id = id;
       setEditorState((prev) => {
         // If selecting a layer, update selectedLayerId
         const selectedObject = id ? findNodeById(objects, id) : null;
         const isLayer = selectedObject?.type === "layer";
+        const isGroup = selectedObject
+          ? isInGroup(selectedObject, objects)
+          : false;
+
+        if (isGroup) {
+          _id = selectedObject?.parentId || null;
+        }
 
         return {
           ...prev,
-          selectedIds: id
+          selectedIds: _id
             ? multiSelect
-              ? prev.selectedIds.includes(id)
-                ? prev.selectedIds.filter((i) => i !== id)
-                : [...prev.selectedIds, id]
-              : [id]
+              ? prev.selectedIds.includes(_id)
+                ? prev.selectedIds.filter((i) => i !== _id)
+                : [...prev.selectedIds, _id]
+              : [_id]
             : [],
           // Update selectedLayerId when selecting a layer
-          selectedLayerId: isLayer ? id : prev.selectedLayerId,
+          selectedLayerId: isLayer ? _id : prev.selectedLayerId,
         };
       });
     },
