@@ -1,14 +1,26 @@
-import React, { useRef, useEffect } from "react";
+import React, { useRef, useEffect, useCallback } from "react";
 import { Group, Transformer } from "react-konva";
 import type Konva from "konva";
-import { GroupObject } from "../../types/editor";
+import { EditorObjectBase, GroupObject } from "../../types/editor";
+import { KonvaEventObject, Node, NodeConfig } from "konva/lib/Node";
+import { useCachedNode } from "@dnd-kit/core/dist/hooks/utilities";
+
+type KonvaMouseTouch =
+  | KonvaEventObject<MouseEvent, Node<NodeConfig>>
+  | KonvaEventObject<TouchEvent, Node<NodeConfig>>;
 
 interface GroupObjectProps {
   object: GroupObject;
   isSelected: boolean;
-  onSelect: () => void;
+  onSelect: (e: KonvaMouseTouch) => void;
   onChange: (changes: Partial<GroupObject>) => void;
   children: React.ReactNode;
+  onContextMenu: (e: KonvaMouseTouch) => void;
+  onDragStart?: (e: KonvaEventObject<DragEvent>, object: GroupObject) => void;
+  onDragEnd?: (e: KonvaEventObject<DragEvent>, object: GroupObject) => void;
+  onDragMove?: (e: KonvaEventObject<DragEvent>, object: GroupObject) => void;
+  onTransformEnd?: () => void;
+  renderNode: (object: EditorObjectBase) => React.ReactNode;
 }
 
 export const GroupObjectComponent: React.FC<GroupObjectProps> = ({
@@ -16,7 +28,12 @@ export const GroupObjectComponent: React.FC<GroupObjectProps> = ({
   isSelected,
   onSelect,
   onChange,
+  onContextMenu,
   children,
+  onDragStart,
+  onDragMove,
+  onDragEnd,
+  onTransformEnd,
 }) => {
   const groupRef = useRef<Konva.Group>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
@@ -29,6 +46,7 @@ export const GroupObjectComponent: React.FC<GroupObjectProps> = ({
   }, [isSelected]);
 
   const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
+    // onDragEnd?.(e, object);
     onChange({
       position: {
         x: e.target.x(),
@@ -37,7 +55,8 @@ export const GroupObjectComponent: React.FC<GroupObjectProps> = ({
     });
   };
 
-  const handleTransformEnd = () => {
+  const handleTransformEnd = (e: Konva.KonvaEventObject<Event>) => {
+    // onTransformEnd?.(e, object);
     if (!groupRef.current) return;
     const node = groupRef.current;
 
@@ -61,6 +80,18 @@ export const GroupObjectComponent: React.FC<GroupObjectProps> = ({
     });
   };
 
+  console.log({ isSelected });
+
+  const handleSelect = useCallback(
+    (e: KonvaMouseTouch) => {
+      e.cancelBubble = true;
+      e.evt.preventDefault();
+      console.log("handleSelect", e.evt.target);
+      onSelect(e);
+    },
+    [onSelect]
+  );
+
   return (
     <>
       <Group
@@ -72,10 +103,20 @@ export const GroupObjectComponent: React.FC<GroupObjectProps> = ({
         rotation={object.rotation}
         opacity={object.opacity}
         draggable
-        onClick={onSelect}
-        onTap={onSelect}
+        onClick={handleSelect}
+        onTap={handleSelect}
         onDragEnd={handleDragEnd}
         onTransformEnd={handleTransformEnd}
+        onContextMenu={onContextMenu}
+        onSelect={(e: KonvaMouseTouch) => onSelect(e)}
+        onDragStart={(e) => {
+          onDragStart?.(e, object);
+        }}
+        onDragMove={(e) => {
+          onDragMove?.(e, object);
+        }}
+        stroke={"blue"}
+        strokeWidth={1}
       >
         {children}
       </Group>

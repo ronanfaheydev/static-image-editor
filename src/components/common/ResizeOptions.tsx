@@ -21,7 +21,6 @@ export const ResizeOptions: React.FC<ResizeOptionsProps> = ({
   onCrop,
 }) => {
   const handleFill = useCallback(() => {
-    console.log(object.size, canvasSize);
     const scale = Math.max(
       canvasSize.width / object.size.width,
       canvasSize.height / object.size.height

@@ -2,19 +2,15 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import {
   EditorObjectBase,
   ImageObject,
-  TextObject,
-  ShapeObject,
   FormatEditMode,
-  BlendMode,
   GroupObject,
   EditorState,
   TreeNodeType,
   RootObject,
 } from "./types/editor";
-import { DialogState, DialogKey } from "./types/project";
+import { DialogKey } from "./types/project";
 import "./App.scss";
 import { useHistory } from "./hooks/useHistory";
-import { useHotkeys } from "react-hotkeys-hook";
 import { LayerPanel } from "./components/layerPanel/LayerPanel";
 import { PropertyPanel } from "./components/PropertyPanel";
 import { Format, DEFAULT_FORMATS } from "./types/format";
@@ -32,7 +28,6 @@ import {
   findNodeById,
   removeNodeFromParent,
   updateNodeInTree,
-  addNodeToParent,
   insertNode,
   moveNodeToFront,
   moveNodeToBack,
@@ -43,16 +38,35 @@ import { useEditorHotkeys } from "./hooks/useEditorHotkeys";
 import { useDialogs } from "./hooks/useDialogs";
 import { ROOT_ID } from "./constants";
 
+const INITIAL_PADDING = 50; // 50px on each side
+
+// eslint-disable-next-line
+const debounce = (fn: Function, ms = 100) => {
+  let timeoutId: number;
+  // eslint-disable-next-line
+  return function (this: any, ...args: any[]) {
+    clearTimeout(timeoutId);
+    timeoutId = window.setTimeout(() => fn.apply(this, args), ms);
+  };
+};
+
 function App() {
   const mainContentRef = useRef<HTMLDivElement | null>(null);
-  const { width: containerWidth, height: containerHeight } =
-    useContainerSize(mainContentRef);
+  const containerSize = useContainerSize(mainContentRef);
+  const { width: containerWidth, height: containerHeight } = containerSize;
+
+  // Add format state
+  const [currentFormat, setCurrentFormat] = useState<Format>(
+    DEFAULT_FORMATS[0]
+  );
+
+  const [customFormats, setCustomFormats] = useState<Format[]>([]);
 
   // Editor state
   const [editorState, setEditorState] = useState<EditorState>({
     selectedIds: [],
     tool: "select",
-    zoom: 0.8,
+    zoom: 1, //getInitialZoom(containerSize, currentFormat),
     formatEditMode: "single",
     backgroundColor: "#ffffff",
     backgroundOpacity: 1,
@@ -61,12 +75,6 @@ function App() {
     drawStartPosition: null,
     drawPreview: null,
   });
-
-  // Add format state
-  const [currentFormat, setCurrentFormat] = useState<Format>(
-    DEFAULT_FORMATS[0]
-  );
-  const [customFormats, setCustomFormats] = useState<Format[]>([]);
 
   // need to use a ref here
   const closeDialogRef = useRef<(key?: DialogKey) => void>(() => {});
@@ -88,10 +96,7 @@ function App() {
       visible: true,
       children: [],
       isExpanded: true,
-      position: {
-        x: Math.max(10, (containerWidth - currentFormat.width) / 2),
-        y: Math.max(10, (containerHeight - currentFormat.height) / 2) + 20, // 20 for the title text
-      },
+      position: { x: 0, y: 0 }, //getInitialPosition(containerSize, currentFormat),
       size: currentFormat,
       rotation: 0,
       opacity: editorState.backgroundOpacity,
@@ -106,15 +111,73 @@ function App() {
     } as RootObject,
   ]);
 
+  // Add this function to calculate the zoom level
+  const calculateFitZoom = useCallback(
+    (format: Format) => {
+      if (!containerWidth || !containerHeight) return 0.8; // default zoom
+
+      const horizontalZoom = (containerWidth - INITIAL_PADDING) / format.width;
+      const verticalZoom = (containerHeight - INITIAL_PADDING) / format.height;
+
+      return Math.min(horizontalZoom, verticalZoom, 2); // cap at 2x zoom
+    },
+    [containerWidth, containerHeight]
+  );
+
+  // Handle format change
+  const handleFormatChange = useCallback(
+    (format: Format) => {
+      setCurrentFormat(format);
+      const zoom = calculateFitZoom(format);
+      setEditorState((prev) => ({
+        ...prev,
+        zoom,
+      }));
+
+      const topLeftX =
+        Math.abs(containerWidth - format.width * zoom) / 2 / zoom;
+      const topLeftY =
+        (Math.abs(containerHeight - format.height * zoom) / 2 + 20) / zoom; // 20 for title text
+
+      // Update root group and background layer positions
+      setObjects((prev) =>
+        prev.map((obj) => {
+          if (obj.id === ROOT_ID) {
+            return {
+              ...obj,
+              size: format,
+              position: { x: topLeftX, y: topLeftY },
+            };
+          }
+          return obj;
+        })
+      );
+    },
+    [calculateFitZoom, setObjects, containerWidth, containerHeight]
+  );
+
+  // Handle custom format add
+  const handleCustomFormatAdd = useCallback(
+    (format: Format) => {
+      setCustomFormats((prev) => [...prev, format]);
+      handleFormatChange(format);
+    },
+    [handleFormatChange]
+  );
+
   // Handle window resize
   useEffect(() => {
-    const handleResize = () => {
-      setCurrentFormat(DEFAULT_FORMATS[0]);
-    };
+    const handleResize = debounce(() => {
+      setCurrentFormat(currentFormat);
+    }, 500);
 
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  }, [currentFormat]);
+
+  useEffect(() => {
+    handleFormatChange(currentFormat);
+  }, [containerWidth, containerHeight, currentFormat, handleFormatChange]);
 
   // Handle object selection
   const handleSelect = useCallback(
@@ -290,7 +353,11 @@ function App() {
         type: "image",
         src: mediaItem.url,
         position: { x: centerX + 100, y: centerY + 100 },
-        size: scaleSize(currentFormat, mediaItem.width, mediaItem.height),
+        size: scaleSize(
+          currentFormat,
+          mediaItem.size.width,
+          mediaItem.size.height
+        ),
         rotation: 0,
         opacity: 1,
         visible: true,
@@ -302,7 +369,6 @@ function App() {
         isExpanded: false,
       };
 
-      console.log(insertNode(objects, newImage, newImage.parentId));
       setObjects(insertNode(objects, newImage, newImage.parentId));
       closeDialogRef.current?.("mediaLibrary");
     },
@@ -327,59 +393,6 @@ function App() {
     handleMediaLibrarySelect,
   });
   closeDialogRef.current = closeDialog;
-
-  // Add this function to calculate the zoom level
-  const calculateFitZoom = useCallback(
-    (format: Format) => {
-      if (!containerWidth || !containerHeight) return 0.8; // default zoom
-
-      const minPadding = 20; // 10px on each side
-      const horizontalZoom = (containerWidth - minPadding) / format.width;
-      const verticalZoom = (containerHeight - minPadding) / format.height;
-
-      return Math.min(horizontalZoom, verticalZoom, 2); // cap at 2x zoom
-    },
-    [containerWidth, containerHeight]
-  );
-
-  // Handle format change
-  const handleFormatChange = useCallback(
-    (format: Format) => {
-      setCurrentFormat(format);
-      setEditorState((prev) => ({
-        ...prev,
-        zoom: calculateFitZoom(format),
-      }));
-
-      // Calculate the centered position with minimum padding
-      const centerX = Math.max(10, (containerWidth - format.width) / 2);
-      const centerY = Math.max(10, (containerHeight - format.height) / 2) + 20; // 20 for the title text
-
-      // Update root group and background layer positions
-      setObjects((prev) =>
-        prev.map((obj) => {
-          if (obj.id === "canvas-background") {
-            return {
-              ...obj,
-              size: format,
-              position: { x: centerX, y: centerY },
-            };
-          }
-          return obj;
-        })
-      );
-    },
-    [calculateFitZoom, setObjects, containerWidth, containerHeight]
-  );
-
-  // Handle custom format add
-  const handleCustomFormatAdd = useCallback(
-    (format: Format) => {
-      setCustomFormats((prev) => [...prev, format]);
-      handleFormatChange(format);
-    },
-    [handleFormatChange]
-  );
 
   // Initialize zoom when container size changes
   useEffect(() => {
@@ -610,12 +623,47 @@ function App() {
       blendMode: "normal",
     };
 
-    let updatedObjects = insertNode(objects, groupObject, groupObject.parentId);
+    let updatedObjects = objects;
+    const selectedObjects = editorState.selectedIds.map((id) =>
+      findNodeById(updatedObjects, id)
+    );
+    const minMax = selectedObjects.reduce(
+      (acc, obj) => {
+        if (!obj) return acc;
+        return {
+          minX: Math.min(acc.minX, obj.position.x),
+          minY: Math.min(acc.minY, obj.position.y),
+          maxX: Math.max(acc.maxX, obj.position.x + obj.size.width),
+          maxY: Math.max(acc.maxY, obj.position.y + obj.size.height),
+        };
+      },
+      {
+        minX: Infinity,
+        minY: Infinity,
+        maxX: -Infinity,
+        maxY: -Infinity,
+      }
+    );
+
+    groupObject.position = {
+      x: minMax.minX,
+      y: minMax.minY,
+    };
+    groupObject.size = {
+      width: minMax.maxX - minMax.minX,
+      height: minMax.maxY - minMax.minY,
+    };
+
+    updatedObjects = insertNode(objects, groupObject, groupObject.parentId);
 
     // Move selected objects into group
     editorState.selectedIds.forEach((id) => {
+      const obj = findNodeById(updatedObjects, id);
+
+      if (!obj) return;
+      obj.parentId = groupId;
       updatedObjects = removeNodeFromParent(updatedObjects, id);
-      updatedObjects = addNodeToParent(updatedObjects, id, groupId);
+      updatedObjects = insertNode(updatedObjects, obj, groupId);
     });
 
     setObjects(updatedObjects);

@@ -112,7 +112,6 @@ export const MediaLibraryDialog: React.FC<MediaLibraryDialogProps> = ({
                 key={item.id}
                 className="media-item"
                 onClick={() => {
-                  debugger;
                   onSelect(item);
                 }}
               >

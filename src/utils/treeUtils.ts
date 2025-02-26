@@ -46,7 +46,12 @@ export const insertNode = (
       if (currentNode.id === parentId) {
         return { ...currentNode, children: [...currentNode.children, newNode] };
       }
-      return currentNode;
+      return currentNode.children.length
+        ? {
+            ...currentNode,
+            children: insertNode(currentNode.children, newNode, parentId),
+          }
+        : currentNode;
     });
   }
 

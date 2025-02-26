@@ -33,8 +33,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [onClose]);
 
-  console.log(items);
-
   return (
     <div
       className="context-menu"
@@ -47,7 +45,6 @@ export const ContextMenu: React.FC<ContextMenuProps> = ({
           <button
             className="menu-item"
             onClick={() => {
-              debugger;
               item.action();
               onClose();
             }}

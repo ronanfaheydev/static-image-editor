@@ -24,6 +24,54 @@ import { Format } from "../types/format";
 import { ContextMenu, ContextMenuItem } from "./common/ContextMenu";
 import { ROOT_ID } from "../constants";
 import { findNodeById } from "../utils/treeUtils";
+import { GroupObjectComponent } from "./shapes/GroupObject";
+
+interface DrawPreviewState {
+  type: "text" | "shape" | "image";
+  shapeType?: ShapeType;
+  position: Position;
+  size: Size;
+}
+
+interface ContextMenuState {
+  show: boolean;
+  position: { x: number; y: number };
+  objectId: string | null;
+  selectedIds?: string[];
+}
+
+const DrawPreview: React.FC<{
+  drawPreview: DrawPreviewState;
+}> = ({ drawPreview }) => {
+  console.log(drawPreview);
+  return (
+    <ShapeObjectComponent
+      object={{
+        ...drawPreview,
+        fill: "#cccccc",
+        stroke: "#000000",
+        strokeWidth: 2,
+        opacity: 0.6,
+        id: "new",
+        blendMode: "normal",
+        visible: true,
+        shapeType: drawPreview.shapeType!,
+        type: "shape",
+        rotation: 0,
+        zIndex: 0,
+        parentId: null,
+        name: "New Shape",
+        children: [],
+      }}
+      isSelected={false}
+      onSelect={() => {}}
+      onChange={() => {}}
+      onDragStart={() => {}}
+      onDragEnd={() => {}}
+      onContextMenu={() => {}}
+    />
+  );
+};
 
 interface CanvasProps {
   editorState: EditorState;
@@ -83,12 +131,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   );
 
   // Add state for context menu
-  const [contextMenu, setContextMenu] = useState<{
-    show: boolean;
-    position: { x: number; y: number };
-    objectId: string | null;
-    selectedIds?: string[];
-  }>({
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({
     show: false,
     position: { x: 0, y: 0 },
     objectId: null,
@@ -97,24 +140,38 @@ export const Canvas: React.FC<CanvasProps> = ({
   const contextMenuRef = useRef(contextMenu);
   contextMenuRef.current = contextMenu;
 
-  const [drawPreview, setDrawPreview] = useState<{
-    type: "text" | "shape" | "image";
-    shapeType?: ShapeType;
-    position: Position;
-    size: Size;
-  } | null>(null);
+  const [drawPreview, setDrawPreview] = useState<DrawPreviewState | null>(null);
 
   const _handleObjectChange = useCallback(
     (id: string, changes: Partial<EditorObjectBase>) => {
-      // if (changes.position) {
-      //   const object = objects.find((obj) => obj.id === id);
-      //   if (object) {
-      //     changes.position = snapToObjects(object, changes.position);
-      //   }
-      // }
+      if (
+        changes.position?.x !== undefined &&
+        changes.position?.y !== undefined
+      ) {
+        const originalObject = findNodeById(objects, id) as EditorObjectBase;
+        editorState.selectedIds.forEach((selectedId) => {
+          if (selectedId === id) return;
+          const object = findNodeById(objects, selectedId) as EditorObjectBase;
+          if (object) {
+            const positionDelta = {
+              x: changes.position.x - originalObject.position.x,
+              y: changes.position.y - originalObject.position.y,
+            };
+            const newPosition = {
+              x: object.position.x + positionDelta.x,
+              y: object.position.y + positionDelta.y,
+            };
+            handleObjectChange(selectedId, { position: newPosition });
+          }
+        });
+        // const object = objects.find((obj) => obj.id === id);
+        // if (object) {
+        //   changes.position = snapToObjects(object, changes.position);
+        // }
+      }
       handleObjectChange(id, changes);
     },
-    [handleObjectChange]
+    [handleObjectChange, editorState.selectedIds, objects]
   );
 
   const handleStageClick = useCallback(
@@ -150,7 +207,7 @@ export const Canvas: React.FC<CanvasProps> = ({
   }, []);
 
   const _handleDragObjectMove = useCallback(
-    (e: KonvaEventObject<DragEvent>, object: EditorObjectBase) => {
+    (_: KonvaEventObject<DragEvent>, object: EditorObjectBase) => {
       setDraggedObject(object);
     },
     []
@@ -177,135 +234,6 @@ export const Canvas: React.FC<CanvasProps> = ({
     },
     [handleSelect]
   );
-
-  const renderNode = (node: EditorObjectBase) => {
-    if (!node.visible) return null;
-
-    const _onSelect = _handleSelect.bind(null, node);
-
-    switch (node.type) {
-      case "group":
-        return (
-          <Group
-            key={node.id}
-            x={(node as GroupObject).position.x}
-            y={(node as GroupObject).position.y}
-            width={(node as GroupObject).size.width}
-            height={(node as GroupObject).size.height}
-            rotation={(node as GroupObject).rotation}
-            opacity={(node as GroupObject).opacity}
-            draggable
-            onSelect={_onSelect}
-            onDragStart={(e) => _handleDragObjectStart(e, node as GroupObject)}
-            onDragEnd={_handleDragObjectEnd}
-            onDragMove={(e) => _handleDragObjectMove(e, node as GroupObject)}
-            onTransformEnd={(e: KonvaEventObject<Event>) => {
-              const node = e.target;
-              const scaleX = node.scaleX();
-              const scaleY = node.scaleY();
-
-              // Reset scale and update size
-              node.scaleX(1);
-              node.scaleY(1);
-
-              const newProps: Partial<GroupObject> = {
-                position: {
-                  x: node.x(),
-                  y: node.y(),
-                },
-                size: {
-                  width: node.width() * scaleX,
-                  height: node.height() * scaleY,
-                },
-                rotation: node.rotation(),
-              };
-
-              handleObjectChange(node.id(), newProps);
-
-              // Update children positions proportionally
-              const children = objects.filter(
-                (child) => child.parentId === node.id()
-              );
-              children.forEach((child) => {
-                const relativeX = child.position.x / node.size().width;
-                const relativeY = child.position.y / node.size().height;
-                handleObjectChange(child.id, {
-                  position: {
-                    x: newProps.size!.width * relativeX,
-                    y: newProps.size!.height * relativeY,
-                  },
-                  size: {
-                    width: child.size.width * scaleX,
-                    height: child.size.height * scaleY,
-                  },
-                });
-              });
-            }}
-            onContextMenu={(e) => handleContextMenu(e, node.id)}
-          >
-            {node.children.map((child: TreeNode) => renderNode(child))}
-            {editorState.selectedIds.includes(node.id) && (
-              <Transformer
-                boundBoxFunc={(oldBox, newBox) => {
-                  const minSize = 5;
-                  if (newBox.width < minSize || newBox.height < minSize) {
-                    return oldBox;
-                  }
-                  return newBox;
-                }}
-              />
-            )}
-          </Group>
-        );
-
-      case "image":
-        return (
-          <ImageObjectComponent
-            key={node.id}
-            object={node as ImageObject}
-            isSelected={editorState.selectedIds.includes(node.id)}
-            onSelect={_onSelect}
-            onChange={(newProps) => _handleObjectChange(node.id, newProps)}
-            onDragStart={_handleDragObjectStart}
-            onDragEnd={_handleDragObjectEnd}
-            onDragMove={_handleDragObjectMove}
-            onContextMenu={(e) => handleContextMenu(e, node.id)}
-          />
-        );
-
-      case "text":
-        return (
-          <TextObjectComponent
-            key={node.id}
-            object={node as TextObject}
-            isSelected={editorState.selectedIds.includes(node.id)}
-            onSelect={_onSelect}
-            onChange={(newProps) => _handleObjectChange(node.id, newProps)}
-            onDragStart={_handleDragObjectStart}
-            onDragEnd={_handleDragObjectEnd}
-            onDragMove={handleDragMove}
-            onContextMenu={(e) => handleContextMenu(e, node.id)}
-          />
-        );
-
-      case "shape":
-        return (
-          <ShapeObjectComponent
-            key={node.id}
-            object={node as ShapeObject}
-            isSelected={editorState.selectedIds.includes(node.id)}
-            onSelect={_onSelect}
-            onChange={(newProps) => _handleObjectChange(node.id, newProps)}
-            onDragStart={_handleDragObjectStart}
-            onDragEnd={_handleDragObjectEnd}
-            onContextMenu={(e) => handleContextMenu(e, node.id)}
-          />
-        );
-
-      default:
-        return null;
-    }
-  };
 
   const handleContextMenu = useCallback(
     (
@@ -334,6 +262,88 @@ export const Canvas: React.FC<CanvasProps> = ({
       });
     },
     [editorState.selectedIds]
+  );
+
+  const renderNode = useCallback(
+    (node: EditorObjectBase) => {
+      if (!node.visible) return null;
+      console.log(editorState);
+
+      const _onSelect = _handleSelect.bind(null, node);
+
+      switch (node.type) {
+        case "group":
+          return (
+            <GroupObjectComponent
+              object={node as GroupObject}
+              isSelected={editorState.selectedIds.includes(node.id)}
+              onSelect={_onSelect}
+              onChange={(newProps) => _handleObjectChange(node.id, newProps)}
+              key={node.id}
+              renderNode={renderNode}
+              onContextMenu={(e) => handleContextMenu(e, node.id)}
+            >
+              {node.children.map((child) => renderNode(child))}
+            </GroupObjectComponent>
+          );
+
+        case "image":
+          return (
+            <ImageObjectComponent
+              key={node.id}
+              object={node as ImageObject}
+              isSelected={editorState.selectedIds.includes(node.id)}
+              onSelect={_onSelect}
+              onChange={(newProps) => _handleObjectChange(node.id, newProps)}
+              onDragStart={_handleDragObjectStart}
+              onDragEnd={_handleDragObjectEnd}
+              onDragMove={_handleDragObjectMove}
+              onContextMenu={(e) => handleContextMenu(e, node.id)}
+            />
+          );
+
+        case "text":
+          return (
+            <TextObjectComponent
+              key={node.id}
+              object={node as TextObject}
+              isSelected={editorState.selectedIds.includes(node.id)}
+              onSelect={_onSelect}
+              onChange={(newProps) => _handleObjectChange(node.id, newProps)}
+              onDragStart={_handleDragObjectStart}
+              onDragEnd={_handleDragObjectEnd}
+              onDragMove={handleDragMove}
+              onContextMenu={(e) => handleContextMenu(e, node.id)}
+            />
+          );
+
+        case "shape":
+          return (
+            <ShapeObjectComponent
+              key={node.id}
+              object={node as ShapeObject}
+              isSelected={editorState.selectedIds.includes(node.id)}
+              onSelect={_onSelect}
+              onChange={(newProps) => _handleObjectChange(node.id, newProps)}
+              onDragStart={_handleDragObjectStart}
+              onDragEnd={_handleDragObjectEnd}
+              onContextMenu={(e) => handleContextMenu(e, node.id)}
+            />
+          );
+
+        default:
+          return null;
+      }
+    },
+    [
+      editorState.selectedIds,
+      _handleSelect,
+      _handleObjectChange,
+      handleContextMenu,
+      _handleDragObjectStart,
+      handleDragMove,
+      _handleDragObjectEnd,
+    ]
   );
 
   const getContextMenuItems = useCallback((): ContextMenuItem[] => {
@@ -414,7 +424,6 @@ export const Canvas: React.FC<CanvasProps> = ({
   ]);
 
   const handleStageMouseDown = useCallback(() => {
-    console.log("stage mousedown");
     if (editorState.tool === "select") return;
 
     // Get position relative to stage
@@ -542,6 +551,12 @@ export const Canvas: React.FC<CanvasProps> = ({
     setDrawPreview(null);
   }, [editorState, drawPreview, handleAddObject, setEditorState, objects]);
 
+  const rootObject = objects.find(
+    (obj) => obj.type === "root"
+  ) as EditorObjectBase;
+
+  console.log(rootObject);
+
   return (
     <div
       ref={containerRef}
@@ -582,8 +597,8 @@ export const Canvas: React.FC<CanvasProps> = ({
         >
           <Layer>
             <Rect
-              x={0}
-              y={0}
+              x={rootObject.position.x}
+              y={rootObject.position.y}
               width={currentFormat.width}
               height={currentFormat.height}
               fill={editorState.backgroundColor}
@@ -618,31 +633,7 @@ export const Canvas: React.FC<CanvasProps> = ({
           {drawPreview && (
             <Layer>
               {drawPreview.type === "shape" && (
-                <ShapeObjectComponent
-                  object={{
-                    ...drawPreview,
-                    fill: "#cccccc",
-                    stroke: "#000000",
-                    strokeWidth: 2,
-                    opacity: 0.6,
-                    id: "new",
-                    blendMode: "normal",
-                    visible: true,
-                    shapeType: drawPreview.shapeType!,
-                    type: "shape",
-                    rotation: 0,
-                    zIndex: 0,
-                    parentId: null,
-                    name: "New Shape",
-                    children: [],
-                  }}
-                  isSelected={false}
-                  onSelect={() => {}}
-                  onChange={() => {}}
-                  onDragStart={() => {}}
-                  onDragEnd={() => {}}
-                  onContextMenu={() => {}}
-                />
+                <DrawPreview drawPreview={drawPreview} />
               )}
               {drawPreview.type === "text" && (
                 <Rect
